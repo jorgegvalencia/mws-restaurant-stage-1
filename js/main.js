@@ -138,10 +138,35 @@ fillRestaurantsHTML = (restaurants = self.restaurants) => {
 createRestaurantHTML = (restaurant) => {
   const li = document.createElement('li');
 
+  /*
+  <picture>
+    <source media="(max-width: 1023px)" srcset="images/still_life-medium_2x.jpg 2x, images/still_life-medium_1x.jpg">
+    <source media="(min-width: 1024px)" srcset="images/still_life-large_2x.jpg 2x, images/still_life-large_1x.jpg">
+    <img alt="YOLO" src="images/still_life-medium_1x.jpg">
+  </picture>
+  */
+
+  const picture = document.createElement('picture');
+  const imgSrc = DBHelper.imageUrlForRestaurant(restaurant);
+
+  const sourceSmall = document.createElement('source');
+  sourceSmall.media = "(max-width: 500px)";
+  sourceSmall.srcset = `${imgSrc.replace('.jpg', '-small.jpg')}`;
+
+  const sourceMedium = document.createElement('source');
+  sourceMedium.media = "(min-width: 501px)";
+  sourceMedium.srcset = `${imgSrc.replace('.jpg', '-medium.jpg')}`;
+
   const image = document.createElement('img');
   image.className = 'restaurant-img';
-  image.src = DBHelper.imageUrlForRestaurant(restaurant);
-  li.append(image);
+  image.src = imgSrc;
+  image.alt = `Cover photo for ${restaurant.name}`;
+
+  picture.append(sourceSmall);
+  picture.append(sourceMedium);
+  picture.append(image);
+
+  li.append(picture);
 
   const name = document.createElement('h1');
   name.innerHTML = restaurant.name;
