@@ -157,7 +157,7 @@ createRestaurantHTML = (restaurant) => {
 
   const image = document.createElement('img');
   image.className = 'restaurant-img';
-  image.src = imgSrc;
+  image.src = imgSrc.replace('.jpg', '-medium.jpg');
   image.alt = `Cover photo for ${restaurant.name}`;
 
   picture.append(source);
