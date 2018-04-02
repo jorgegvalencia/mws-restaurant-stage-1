@@ -370,6 +370,10 @@ nav h1 a {
   margin: 0 0 10px;
 }
 
+#restaurant-hours {
+  margin: 0 auto;
+}
+
 #restaurant-hours td {
   margin: 0 auto;
   text-align: left;
