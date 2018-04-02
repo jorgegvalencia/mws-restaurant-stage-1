@@ -150,22 +150,17 @@ createRestaurantHTML = (restaurant) => {
 
   const picture = document.createElement('picture');
   const imgSrc = DBHelper.imageUrlForRestaurant(restaurant);
-
-  const sourceSmall = document.createElement('source');
-  sourceSmall.media = "(max-width: 500px)";
-  sourceSmall.srcset = `${imgSrc.replace('.jpg', '-small.jpg')}`;
-
-  const sourceMedium = document.createElement('source');
-  sourceMedium.media = "(min-width: 501px)";
-  sourceMedium.srcset = `${imgSrc.replace('.jpg', '-medium.jpg')}`;
+  
+  const source = document.createElement('source');
+  source.sizes = "(min-width: 581px) 50vw, 100vw";
+  source.srcset = `${imgSrc.replace('.jpg', '-small.jpg')} 500w, ${imgSrc.replace('.jpg', '-medium.jpg')} 800w`;
 
   const image = document.createElement('img');
   image.className = 'restaurant-img';
   image.src = imgSrc;
   image.alt = `Cover photo for ${restaurant.name}`;
 
-  picture.append(sourceSmall);
-  picture.append(sourceMedium);
+  picture.append(source);
   picture.append(image);
 
   li.append(picture);

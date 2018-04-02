@@ -68,25 +68,16 @@ fillRestaurantHTML = (restaurant = self.restaurant) => {
   const picture = document.getElementById('restaurant-picture');
   const imgSrc = DBHelper.imageUrlForRestaurant(restaurant);
 
-  const sourceSmall = document.createElement('source');
-  sourceSmall.media = "(max-width: 500px)";
-  sourceSmall.srcset = `${imgSrc.replace('.jpg', '-small.jpg')}`;
-  sourceSmall.sizes = "(max-width: 680px) 100%, calc((100% - 80px) / 2)";
+  const source = document.createElement('source');
+  source.sizes = "(max-width: 680px) 100vw, 50vw";
+  source.srcset = `${imgSrc.replace('.jpg', '-small.jpg')} 500w, ${imgSrc.replace('.jpg', '-medium.jpg')} 800w`;
 
-
-  const sourceMedium = document.createElement('source');
-  sourceMedium.media = "(min-width: 501px)";
-  sourceMedium.srcset = `${imgSrc.replace('.jpg', '-medium.jpg')}`;
-  sourceMedium.sizes = "(min-width: 681px) calc((100% - 80px) / 2), 100%";
-
-  
   const image = document.getElementById('restaurant-img');
   
-  picture.insertBefore(sourceSmall, image);
-  picture.insertBefore(sourceMedium, image);
+  picture.insertBefore(source, image);
 
   image.className = 'restaurant-img';
-  image.src = imgSrc;
+  image.src = imgSrc.replace('.jpg', '-medium.jpg');
   image.alt = `Cover photo for ${restaurant.name}`;
   
   const cuisine = document.getElementById('restaurant-cuisine');
