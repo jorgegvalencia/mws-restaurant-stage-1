@@ -1,6 +1,16 @@
 let restaurant;
 var map;
 
+setTimeout(function() { // defer load to avoid reference error
+  fetchRestaurantFromURL((error, restaurant) => {
+    if (error) { // Got an error!
+      console.error(error);
+    } else {
+      fillBreadcrumb();
+    }
+  });
+}, 0);
+
 /**
  * Initialize Google map, called from HTML.
  */
@@ -161,6 +171,7 @@ createReviewHTML = (review) => {
  */
 fillBreadcrumb = (restaurant=self.restaurant) => {
   const breadcrumb = document.getElementById('breadcrumb');
+  if (breadcrumb.children.length > 1) return;
   const li = document.createElement('li');
   li.innerHTML = restaurant.name;
   breadcrumb.appendChild(li);

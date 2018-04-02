@@ -8,9 +8,19 @@ var markers = []
  * Fetch neighborhoods and cuisines as soon as the page is loaded.
  */
 document.addEventListener('DOMContentLoaded', (event) => {
-  fetchNeighborhoods();
-  fetchCuisines();
+  registerServiceWorker().then(function() {    
+    fetchNeighborhoods();
+    fetchCuisines();
+  });
 });
+
+registerServiceWorker = () => {
+  if (!navigator.serviceWorker){
+    return;
+  }
+  return navigator.serviceWorker.register('sw.js') 
+    .catch(console.error);
+}
 
 /**
  * Fetch all neighborhoods and set their HTML.
@@ -137,14 +147,6 @@ fillRestaurantsHTML = (restaurants = self.restaurants) => {
  */
 createRestaurantHTML = (restaurant) => {
   const li = document.createElement('li');
-
-  /*
-  <picture>
-    <source media="(max-width: 1023px)" srcset="images/still_life-medium_2x.jpg 2x, images/still_life-medium_1x.jpg">
-    <source media="(min-width: 1024px)" srcset="images/still_life-large_2x.jpg 2x, images/still_life-large_1x.jpg">
-    <img alt="YOLO" src="images/still_life-medium_1x.jpg">
-  </picture>
-  */
 
   const picture = document.createElement('picture');
   const imgSrc = DBHelper.imageUrlForRestaurant(restaurant);
