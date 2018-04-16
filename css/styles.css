@@ -31,7 +31,7 @@ a {
 
 a:hover,
 a:focus {
-  color: #3397db;
+  color: #e9a932;
   text-decoration: none;
 }
 
@@ -80,6 +80,9 @@ section {
 }
 
 /* ====================== Navigation ====================== */
+*:focus {
+outline: 3px solid rgb(235, 17, 72);
+}
 
 nav {
   display: flex;
@@ -137,6 +140,19 @@ nav h1 a {
   text-decoration: underline;
 }
 
+.skip-link {
+  position: absolute;
+  top: -9999px;
+  background-color: #f18200 ;
+  color: black;
+  font-weight: bold;
+}
+
+.skip-link:focus {
+  top: 0;
+  color: black;
+}
+
 /* ====================== Map ====================== */
 
 #map {
@@ -155,14 +171,14 @@ nav h1 a {
   justify-content: center;
   width: 100%;
   min-height: 50px;
-  background-color: #3397DB;
+  background-color: #3290e9;
   align-items: center;
 }
 
 .filter-options h2 {
   color: white;
   font-size: 1rem;
-  font-weight: normal;
+  font-weight: bold;
   line-height: 1;
   margin: 0 20px;
 }
@@ -177,6 +193,10 @@ nav h1 a {
   margin: 10px;
   padding: 0 10px;
   width: 200px;
+}
+
+.filter-options select:focus {
+  outline: 3px solid rgb(235, 17, 72);  
 }
 
 @media screen and (min-width: 620px) {
@@ -218,11 +238,11 @@ nav h1 a {
   min-width: 100%;
 }
 
-#restaurants-list li h1 {
-  color: #f18200;
+#restaurants-list li h3 {
+  color: #3290e9;
   font-family: Arial, sans-serif;
   font-size: 14pt;
-  font-weight: 200;
+  font-weight: 600;
   letter-spacing: 0;
   line-height: 1.3;
   margin: 20px 0 10px;
@@ -235,11 +255,12 @@ nav h1 a {
 }
 
 #restaurants-list li a {
-  background-color: orange;
+  background-color: #3290e9;
   border-bottom: 3px solid #eee;
   color: #fff;
   display: inline-block;
   font-size: 10pt;
+  font-weight: bold;
   margin: 15px 0 0;
   padding: 8px 30px 10px;
   text-align: center;
@@ -293,7 +314,7 @@ nav h1 a {
 }
 
 #restaurant-name {
-  color: #f18200;
+  color: #f18200; 
   font-family: Arial, sans-serif;
   font-size: 20pt;
   font-weight: 200;
@@ -413,4 +434,11 @@ nav h1 a {
   #breadcrumb {
     padding: 10px 15%;
   }
+}
+
+#restaurants-list li a:hover,
+#restaurants-list li a:focus {
+  background-color: rgb(235, 17, 72);
+  /* background-color: #f18200;    */
+  outline: none;
 }

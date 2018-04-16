@@ -1,8 +1,8 @@
 let restaurants,
   neighborhoods,
-  cuisines
-var map
-var markers = []
+  cuisines;
+var map;
+var markers = [];
 
 /**
  * Fetch neighborhoods and cuisines as soon as the page is loaded.
@@ -11,6 +11,9 @@ document.addEventListener('DOMContentLoaded', (event) => {
   registerServiceWorker().then(function() {    
     fetchNeighborhoods();
     fetchCuisines();
+    if (!navigator.onLine) {
+      updateRestaurants();
+    }
   });
 });
 
@@ -165,7 +168,7 @@ createRestaurantHTML = (restaurant) => {
 
   li.append(picture);
 
-  const name = document.createElement('h1');
+  const name = document.createElement('h3');
   name.innerHTML = restaurant.name;
   li.append(name);
 
@@ -180,6 +183,8 @@ createRestaurantHTML = (restaurant) => {
   const more = document.createElement('a');
   more.innerHTML = 'View Details';
   more.href = DBHelper.urlForRestaurant(restaurant);
+  more.setAttribute('role', 'button');
+  more.setAttribute('aria-label', `View details of ${restaurant.name}`);
   li.append(more)
 
   return li

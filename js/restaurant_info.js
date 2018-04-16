@@ -2,13 +2,15 @@ let restaurant;
 var map;
 
 setTimeout(function() { // defer load to avoid reference error
-  fetchRestaurantFromURL((error, restaurant) => {
-    if (error) { // Got an error!
-      console.error(error);
-    } else {
-      fillBreadcrumb();
-    }
-  });
+  if (!navigator.onLine) {
+    fetchRestaurantFromURL((error, restaurant) => {
+      if (error) { // Got an error!
+        console.error(error);
+      } else {
+        fillBreadcrumb();
+      }
+    });
+  }
 }, 0);
 
 /**
@@ -165,6 +167,7 @@ fillBreadcrumb = (restaurant=self.restaurant) => {
   if (breadcrumb.children.length > 1) return;
   const li = document.createElement('li');
   li.innerHTML = restaurant.name;
+  li.setAttribute('aria-current', 'page');
   breadcrumb.appendChild(li);
 }
 

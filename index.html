@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 
 <head>
   <meta charset="UTF-8">
@@ -18,25 +18,29 @@
 
   <main id="maincontent">
 
+    <a href="#restaurant-results" class="skip-link">
+       Skip to restaurant selection
+    </a>
+
     <section id="map-container">
-      <div id="map"></div>
+      <div id="map" role="application" aria-label="Google Maps with filtered restaurants locations"></div>
     </section>
 
-    <section>
+    <section id="restaurant-results">
       <div class="filter-options">
         <h2>Filter Results</h2>
 
-        <select id="neighborhoods-select" name="neighborhoods" onchange="updateRestaurants()">
+        <select id="neighborhoods-select" name="neighborhoods" aria-label="Filter restaurants by neighborhoods" onchange="updateRestaurants()">
           <option value="all">All Neighborhoods</option>
         </select>
 
-        <select id="cuisines-select" name="cuisines" onchange="updateRestaurants()">
+        <select id="cuisines-select" name="cuisines" aria-label="Filter restaurants by types of cuisines" onchange="updateRestaurants()">
           <option value="all">All Cuisines</option>
         </select>
 
       </div>
-      <ul id="restaurants-list">
-
+      <ul id="restaurants-list" aria-label="List of restaurants">
+        No results found
       </ul>
     </section>
 
