@@ -1,8 +1,9 @@
-const staticCacheName = 'mws-static-v1';
+const env = require ('./env.config.js');
+const staticCacheName = `mws-static-${env.version}`;
 const restaurantCoverImages = 'mws-restaurant-imgs';
 const restaurantData = 'mws-restaurant-data';
 
-const API_KEY = 'AIzaSyDX0ubSeymjp0TknoQccasOYsu7Aacu2f4';
+// const API_KEY = 'AIzaSyDX0ubSeymjp0TknoQccasOYsu7Aacu2f4';
 // `https://maps.googleapis.com/maps/api/js?key=${API_KEY}&libraries=places&callback=initMap`,
 
 const allCaches = [
@@ -11,19 +12,23 @@ const allCaches = [
   restaurantData
 ];
 
-console.log('Service worker code...');
+let cachedAssets = [
+  'js/main.js',
+  'js/restaurant_info.js',
+  'css/styles.css'
+];
+
+if (env.prod) {
+  cachedAssets = [
+    'index.html',
+    'restaurant.html',
+    ...cachedAssets,
+  ];
+}
 
 self.addEventListener('install', function(event) {
   const initCache = caches.open(staticCacheName).then(cache => {
-    return cache.addAll([
-      'index.html',
-      'restaurant.html',
-      'js/main.js',
-      'js/dbhelper.js',
-      'js/restaurant_info.js',
-      'css/styles.css',
-      'data/restaurants.json'
-    ]);
+    return cache.addAll(cachedAssets);
   });
   event.waitUntil(initCache);
 });
@@ -36,13 +41,13 @@ self.addEventListener('activate', function(event) {
         .map(cacheName => caches.delete(cacheName));
       return Promise.all(cacheCleanup);
     })
-  )
-})
+  );
+});
 
 self.addEventListener('fetch', function(event) {
   const requestUrl = new URL(event.request.url);
 
-  if (requestUrl.origin === location.origin) {
+  if (requestUrl.origin === location.origin && env.prod) {
     if (requestUrl.pathname === '/') {
       return event.respondWith(caches.match('index.html'));
     }
@@ -67,7 +72,7 @@ function cachePhoto (request) {
       return fetch(request).then(networkResponse => {
         cache.put(storageUrl, networkResponse.clone());
         return networkResponse;
-      })
-    })
-  })
+      });
+    });
+  });
 }
