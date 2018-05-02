@@ -77,8 +77,34 @@ gulp.task('scripts', function() {
 });
 
 gulp.task('images', function() {
-  return gulp.src(['src/img/*'], { base: 'src' })
-    .pipe(gulp.dest('dist'));
+  const responsiveOpts = {
+    '*.{gif,jpg,png}': [
+      {
+        skipOnEnlargement: true,
+        flatten: true,
+        format: 'jpeg',
+      },
+      {
+        skipOnEnlargement: true,
+        flatten: true,
+        format: 'jpeg',
+        width: 500,
+        quality: 50,
+        rename: { suffix: '-small' }
+      },
+      {
+        skipOnEnlargement: true,
+        flatten: true,
+        format: 'jpeg',
+        width: 800,
+        quality: 50,
+        rename: { suffix: '-medium' }
+      }
+    ]
+  };
+  return gulp.src(['src/img/*'], { base: 'src/img/' })
+    .pipe($.responsive(responsiveOpts))
+    .pipe(gulp.dest('dist/img'));
 });
 
 gulp.task('styles', function() {
