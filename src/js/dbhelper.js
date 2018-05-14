@@ -1,43 +1,56 @@
 /**
  * Common database helper functions.
  */
-module.exports = class DBHelper {
 
+const IDBHelper = require('./idbhelper');
+module.exports = class DBHelper {
   /**
    * Database URL.
    * Change this to restaurants.json file location on your server.
    */
   static get API_ENDPOINT() {
     const port = 1337; // Change this to your server port
-    return `http://localhost:${port}/restaurants`;
+    return `http://localhost:${port}`;
   }
 
   /**
    * Fetch all restaurants.
    */
-  static fetchRestaurants(callback) {
-    fetch(DBHelper.API_ENDPOINT)
+  static fetchRestaurants(onNetworkDone) {
+    return fetch(DBHelper.API_ENDPOINT + '/restaurants')
       .then(response => response.json())
       .then(restaurants => {
-        callback(null, restaurants);
+        IDBHelper.storeRestaurants(restaurants);
+        onNetworkDone(null, restaurants);
       })
       .catch(error => {
-        callback(error, null);
+        return IDBHelper.getStoredRestaurants()
+          .then(function(restaurants) {
+            onNetworkDone(null, restaurants);
+          })
+          .catch(function() {
+            onNetworkDone(error, null);
+          });
       });
   }
 
   /**
    * Fetch a restaurant by its ID.
    */
-  static fetchRestaurantById(id, callback) {
-    // fetch all restaurants with proper error handling.
-    fetch(DBHelper.API_ENDPOINT + '/' + id)
+  static fetchRestaurantById(id, onNetworkDone) {
+    return fetch(DBHelper.API_ENDPOINT + '/restaurants/' + id)
       .then(response => response.json())
       .then(restaurant => {
-        callback(null, restaurant);
+        onNetworkDone(null, restaurant);
       })
       .catch(error => {
-        callback(error, null);
+        return IDBHelper.getStoredRestaurant(id)
+          .then(function(restaurant) {
+            if (restaurant) onNetworkDone(null, restaurant);
+          })
+          .catch(function() {
+            onNetworkDone(error, null);
+          });
       });
   }
 
@@ -46,7 +59,7 @@ module.exports = class DBHelper {
    */
   static fetchRestaurantByCuisine(cuisine, callback) {
     // Fetch all restaurants  with proper error handling
-    DBHelper.fetchRestaurants((error, restaurants) => {
+    return DBHelper.fetchRestaurants((error, restaurants) => {
       if (error) {
         callback(error, null);
       } else {
@@ -62,7 +75,7 @@ module.exports = class DBHelper {
    */
   static fetchRestaurantByNeighborhood(neighborhood, callback) {
     // Fetch all restaurants
-    DBHelper.fetchRestaurants((error, restaurants) => {
+    return DBHelper.fetchRestaurants((error, restaurants) => {
       if (error) {
         callback(error, null);
       } else {
@@ -78,7 +91,7 @@ module.exports = class DBHelper {
    */
   static fetchRestaurantByCuisineAndNeighborhood(cuisine, neighborhood, callback) {
     // Fetch all restaurants
-    DBHelper.fetchRestaurants((error, restaurants) => {
+    return DBHelper.fetchRestaurants((error, restaurants) => {
       if (error) {
         callback(error, null);
       } else {
@@ -99,7 +112,7 @@ module.exports = class DBHelper {
    */
   static fetchNeighborhoods(callback) {
     // Fetch all restaurants
-    DBHelper.fetchRestaurants((error, restaurants) => {
+    return DBHelper.fetchRestaurants((error, restaurants) => {
       if (error) {
         callback(error, null);
       } else {
@@ -117,7 +130,7 @@ module.exports = class DBHelper {
    */
   static fetchCuisines(callback) {
     // Fetch all restaurants
-    DBHelper.fetchRestaurants((error, restaurants) => {
+    return DBHelper.fetchRestaurants((error, restaurants) => {
       if (error) {
         callback(error, null);
       } else {
@@ -141,7 +154,7 @@ module.exports = class DBHelper {
    * Restaurant image URL.
    */
   static imageUrlForRestaurant(restaurant) {
-    return (`/img/${restaurant.photograph}` + '.jpg');
+    return (`/img/${restaurant.photograph}`);
   }
 
   /**
@@ -153,8 +166,8 @@ module.exports = class DBHelper {
       title: restaurant.name,
       url: DBHelper.urlForRestaurant(restaurant),
       map: map,
-      animation: google.maps.Animation.DROP}
-    );
+      animation: google.maps.Animation.DROP
+    });
     return marker;
   }
 

@@ -17,6 +17,7 @@ const browserify = require('browserify');
 const source = require('vinyl-source-stream');
 const buffer = require('vinyl-buffer');
 const mergeStream = require('merge-stream');
+const compress = require('compression');
 
 const argv = require('yargs').argv;
 const env = argv.env || 'dev';
@@ -59,7 +60,7 @@ gulp.task('setup-prod', function() {
 });
 
 gulp.task('templates', function() {
-  return gulp.src(['./src/*.html'])
+  return gulp.src(['./src/*.html', './src/manifest.json'])
     .pipe(gulp.dest('dist'))
     .pipe(browserSync.stream())
     .on('error', log);
@@ -67,8 +68,12 @@ gulp.task('templates', function() {
 
 gulp.task('scripts', function() {
   jsBundles = {
+    'js/polyfills/url.js': createBundle('src/js/polyfills/url.js'),
+    'js/polyfills/promise.js': createBundle('src/js/polyfills/promise.js'),
     'js/main.js': createBundle('src/js/main.js'),
     'js/restaurant_info.js': createBundle('src/js/restaurant_info.js'),
+    'js/dbhelper.js': createBundle('src/js/dbhelper.js'),
+    'env.config.js': createBundle('src/env.config.js'),
     'sw.js': createBundle('src/sw.js')
   };
   return mergeStream.apply(null, Object.keys(jsBundles).map(function(key) {
@@ -78,7 +83,7 @@ gulp.task('scripts', function() {
 
 gulp.task('images', function() {
   const responsiveOpts = {
-    '*.{gif,jpg,png}': [
+    '*.{gif,jpg}': [
       {
         skipOnEnlargement: true,
         flatten: true,
@@ -88,23 +93,54 @@ gulp.task('images', function() {
         skipOnEnlargement: true,
         flatten: true,
         format: 'jpeg',
+        quality: 60,
         width: 500,
-        quality: 50,
         rename: { suffix: '-small' }
       },
       {
         skipOnEnlargement: true,
         flatten: true,
         format: 'jpeg',
+        quality: 60,
         width: 800,
-        quality: 50,
         rename: { suffix: '-medium' }
+      }
+    ],
+  };
+  const iconOpts = {
+    'icon.png': [
+      {
+        withoutEnlargement: true,
+        width: 192,
+        height: 192,
+        rename: { suffix: '-192x192' }
+      },
+      {
+        withoutEnlargement: true,
+        width: 256,
+        height: 256,
+        rename: { suffix: '-256x256' }
+      },
+      {
+        withoutEnlargement: true,
+        width: 384,
+        height: 384,
+        rename: { suffix: '-384x384' }
+      },
+      {
+        rename: { suffix: '-512x512' }
       }
     ]
   };
-  return gulp.src(['src/img/*'], { base: 'src/img/' })
-    .pipe($.responsive(responsiveOpts))
+  const iconSrc = gulp.src(['src/img/icon.png'], { base: 'src/img/' })
+    .pipe($.responsive(iconOpts))
     .pipe(gulp.dest('dist/img'));
+  const imagesSrc = gulp.src(['src/img/*.jpg'], { base: 'src/img/' })
+    .pipe($.responsive(responsiveOpts))
+    .pipe(gulp.dest('dist/img'))
+    .pipe($.webp())
+    .pipe(gulp.dest('dist/img'));
+  return mergeStream.apply(null, [iconSrc, imagesSrc]);
 });
 
 gulp.task('styles', function() {
@@ -114,7 +150,7 @@ gulp.task('styles', function() {
     .pipe($.autoprefixer({ browsers: ['last 2 versions']}))
     .pipe($.sourcemaps.init())
     .pipe($.sass({ outputStyle: 'compressed' }))
-    .pipe($.sourcemaps.write())
+    .pipe($.sourcemaps.write('.'))
     .pipe(gulp.dest('dist/css'))
     .pipe(browserSync.stream({ match: '**/*.css', once: true }));
 });
@@ -137,7 +173,11 @@ gulp.task('dev-server', function() {
   browserSync.init({
     injectChanges: true,
     server: './dist',
-    port: config.port
+    port: config.port,
+    middleware: function(req,res,next){
+      var gzip = compress();
+      gzip(req,res,next);
+    }
   });
   return browserSync.stream();
 });

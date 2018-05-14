@@ -1,7 +1,7 @@
 const env = {
   prod: false,
   port: 8000,
-  version: uuidv4(),
+  version: 1,
 };
 module.exports = env;
 

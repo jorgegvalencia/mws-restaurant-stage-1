@@ -2,9 +2,22 @@
 // var map;
 
 const DBHelper = require('./dbhelper');
+const loadScripts = require('./utils/loadscripts');
 
-setTimeout(function() { // defer load to avoid reference error
-  if (!navigator.onLine) {
+document.addEventListener('DOMContentLoaded', () => {
+  if (navigator.onLine){
+    window.loadMap(function() {
+      // will trigger initMap
+    }, function() {
+      fetchRestaurantFromURL((error) => {
+        if (error) { // Got an error!
+          console.error(error);
+        } else {
+          fillBreadcrumb();
+        }
+      });
+    });
+  } else {
     fetchRestaurantFromURL((error) => {
       if (error) { // Got an error!
         console.error(error);
@@ -13,7 +26,13 @@ setTimeout(function() { // defer load to avoid reference error
       }
     });
   }
-}, 0);
+});
+
+window.loadMap = (success, fail) => {
+  const API_KEY = 'AIzaSyDX0ubSeymjp0TknoQccasOYsu7Aacu2f4';
+  const mapScript = `https://maps.googleapis.com/maps/api/js?key=${API_KEY}&libraries=places&callback=initMap`;
+  loadScripts([mapScript], success, fail);
+};
 
 /**
  * Initialize Google map, called from HTML.
@@ -74,15 +93,17 @@ var fillRestaurantHTML = (restaurant = self.restaurant) => {
 
   const source = document.createElement('source');
   source.sizes = '(max-width: 680px) 100vw, 50vw';
-  source.srcset = `${imgSrc.replace('.jpg', '-small.jpg')} 500w, ${imgSrc.replace('.jpg', '-medium.jpg')} 800w`;
+  // source.srcset = `${imgSrc.replace('.jpg', '-small.jpg')} 500w, ${imgSrc.replace('.jpg', '-medium.jpg')} 800w`;
+  source.srcset = `${imgSrc}-small.webp 500w, ${imgSrc}-medium.webp 800w`;
+  source.type = 'image/webp';
 
   const image = document.getElementById('restaurant-img');
+  image.className = 'restaurant-img';
+  image.srcset = `${imgSrc}-medium.webp 800w`;
+  image.src = `${imgSrc}-medium.jpg`;
+  image.alt = `Cover photo for ${restaurant.name}`;
   
   picture.insertBefore(source, image);
-
-  image.className = 'restaurant-img';
-  image.src = imgSrc.replace('.jpg', '-medium.jpg');
-  image.alt = `Cover photo for ${restaurant.name}`;
   
   const cuisine = document.getElementById('restaurant-cuisine');
   cuisine.innerHTML = restaurant.cuisine_type;
