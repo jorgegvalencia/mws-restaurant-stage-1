@@ -1,5 +1,13 @@
 const DBHelper = require('./dbhelper');
-const loadScripts = require('./utils/loadscripts');
+const loadGoogleMapsApi = require('load-google-maps-api');
+
+// const API_KEY = 'AIzaSyDX0ubSeymjp0TknoQccasOYsu7Aacu2f4';
+
+const gMapsOpts = {
+  key: 'AIzaSyDX0ubSeymjp0TknoQccasOYsu7Aacu2f4',
+  libraries: ['places']
+};
+let isDynamicMapLoaded = false;
 
 require('./polyfills');
 
@@ -13,27 +21,82 @@ let map,
  * Fetch neighborhoods and cuisines as soon as the page is loaded.
  */
 document.addEventListener('DOMContentLoaded', () => {
-  registerServiceWorker().then(function() {
+  initServiceWorker().then(function() {
+    if (window.matchMedia('(max-width:580px)').matches) {
+      loadStaticMapImage();
+      updateRestaurants();
+    } else {
+      loadMap().then(updateRestaurants);
+    }
     fetchNeighborhoods();
     fetchCuisines();
-    if (navigator.onLine) {
-      window.loadMap(function() {
-        // will trigger initMap
-      }, function() {
-        window.updateRestaurants();
-      });
-    } else {
-      self.updateRestaurants();
-    }
+    document.getElementById('cuisines-select').addEventListener('change', onUserAction);
+    document.getElementById('neighborhoods-select').addEventListener('change', onUserAction);
+    document.getElementById('map').addEventListener('mouseover', function() {
+      if (!isDynamicMapLoaded) loadMap().then(updateRestaurants);
+    }, { once: true });
+    window.addEventListener('resize', function() {
+      if (!isDynamicMapLoaded) loadMap().then(updateRestaurants);
+    }, { once: true });
   });
 });
 
-const registerServiceWorker = () => {
+const onUserAction = () => {
+  loadMap().finally(updateRestaurants);
+};
+
+const initServiceWorker = () => {
   if (!navigator.serviceWorker) {
     return;
   }
   return navigator.serviceWorker.register('sw.js')
     .catch(console.error);
+};
+
+/**
+ * Initialize Google map
+ */
+const loadMap = (options = gMapsOpts) => {
+  if (isDynamicMapLoaded) return Promise.resolve('Map already loaded');
+  if (!navigator.onLine){
+    return Promise.reject('There is no connection');
+  }
+  return loadGoogleMapsApi(options).then(googleMaps => {
+    isDynamicMapLoaded = true;
+    const loc = {
+      lat: 40.722216,
+      lng: -73.987501
+    };
+    map = new googleMaps.Map(document.getElementById('map'), {
+      zoom: 12,
+      center: loc,
+      scrollwheel: false
+    });
+  })
+    .catch(console.error);
+};
+
+/**
+ * Initialize Google map with a static image
+ */
+const loadStaticMapImage = () => {
+  const browserWidth = window.innerWidth ||
+    document.documentElement.clientWidth ||
+    document.body.clientWidth;
+
+  const mapHeight = '400'; // in px
+  const staticMapUrl =
+    'https://maps.googleapis.com/maps/api/staticmap?center=40.722216,+-73.987501&' +
+    'zoom=12&' +
+    'scale=3&' +
+    `size=${browserWidth}x${mapHeight}&` +
+    'maptype=roadmap&format=png&' +
+    'visual_refresh=true&' +
+    `key=${gMapsOpts.key}`;
+
+  const mapsImage =
+    `<img width='${browserWidth}px' src=${encodeURI(staticMapUrl)} alt='Google Map image of Restaurants Area'>`;
+  document.getElementById('map').innerHTML = mapsImage;
 };
 
 /**
@@ -111,6 +174,10 @@ const resetRestaurants = (restaurants) => {
  */
 const fillRestaurantsHTML = (restaurants = restaurantsList) => {
   const ul = document.getElementById('restaurants-list');
+  if (restaurants.length < 1){
+    ul.innerHTML = '<p>No results found</p>';
+    return;
+  }
   restaurants.forEach(restaurant => {
     ul.append(createRestaurantHTML(restaurant));
   });
@@ -170,7 +237,7 @@ const createRestaurantHTML = (restaurant) => {
 const addMarkersToMap = (restaurants = restaurantsList) => {
   restaurants.forEach(restaurant => {
     // Add marker to the map
-    if (window.google) {
+    if (isDynamicMapLoaded) {
       const marker = DBHelper.mapMarkerForRestaurant(restaurant, map);
       google.maps.event.addListener(marker, 'click', () => {
         window.location.href = marker.url;
@@ -180,32 +247,10 @@ const addMarkersToMap = (restaurants = restaurantsList) => {
   });
 };
 
-window.loadMap = (success, fail) => {
-  const API_KEY = 'AIzaSyDX0ubSeymjp0TknoQccasOYsu7Aacu2f4';
-  const mapScript = `https://maps.googleapis.com/maps/api/js?key=${API_KEY}&libraries=places&callback=initMap`;
-  loadScripts([mapScript], success, fail);
-};
-
-/**
- * Initialize Google map, called from HTML.
- */
-window.initMap = () => {
-  let loc = {
-    lat: 40.722216,
-    lng: -73.987501
-  };
-  map = new google.maps.Map(document.getElementById('map'), {
-    zoom: 12,
-    center: loc,
-    scrollwheel: false
-  });
-  window.updateRestaurants();
-};
-
 /**
  * Update page and map for current restaurants.
  */
-window.updateRestaurants = () => {
+const updateRestaurants = () => {
   const cSelect = document.getElementById('cuisines-select');
   const nSelect = document.getElementById('neighborhoods-select');
 
