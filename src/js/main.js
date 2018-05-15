@@ -1,8 +1,6 @@
 const DBHelper = require('./dbhelper');
 const loadGoogleMapsApi = require('load-google-maps-api');
 
-// const API_KEY = 'AIzaSyDX0ubSeymjp0TknoQccasOYsu7Aacu2f4';
-
 const gMapsOpts = {
   key: 'AIzaSyDX0ubSeymjp0TknoQccasOYsu7Aacu2f4',
   libraries: ['places']
@@ -72,6 +70,7 @@ const loadMap = (options = gMapsOpts) => {
       center: loc,
       scrollwheel: false
     });
+    return Promise.resolve(map);
   })
     .catch(console.error);
 };

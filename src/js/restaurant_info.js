@@ -1,95 +1,115 @@
-// let restaurant;
-// var map;
-
 const DBHelper = require('./dbhelper');
-const loadScripts = require('./utils/loadscripts');
+const loadGoogleMapsApi = require('load-google-maps-api');
+let isDynamicMapLoaded = false;
+let map, restaurant;
+const gMapsOpts = {
+  key: 'AIzaSyDX0ubSeymjp0TknoQccasOYsu7Aacu2f4',
+  libraries: ['places']
+};
 
 document.addEventListener('DOMContentLoaded', () => {
-  if (navigator.onLine){
-    window.loadMap(function() {
-      // will trigger initMap
-    }, function() {
-      fetchRestaurantFromURL((error) => {
-        if (error) { // Got an error!
-          console.error(error);
-        } else {
-          fillBreadcrumb();
-        }
+  fetchRestaurantFromURL().then(restaurant => {
+    fillRestaurantHTML();
+    fillBreadcrumb();
+    if (window.matchMedia('(max-width:580px)').matches) {
+      loadStaticMapImage(restaurant);
+    } else {
+      loadMap(gMapsOpts, restaurant).then(map => {
+        DBHelper.mapMarkerForRestaurant(restaurant, map);
       });
-    });
-  } else {
-    fetchRestaurantFromURL((error) => {
-      if (error) { // Got an error!
-        console.error(error);
-      } else {
-        fillBreadcrumb();
-      }
-    });
-  }
+    }
+  })
+    .catch(console.error);
+  document.getElementById('map').addEventListener('mouseover', function() {
+    if (!isDynamicMapLoaded) loadMap(gMapsOpts, restaurant).then();
+  }, { once: true });
+  window.addEventListener('resize', function() {
+    if (!isDynamicMapLoaded) loadMap(gMapsOpts, restaurant).then();
+  }, { once: true });
+  window.addEventListener('touchend', function() {
+    if (!isDynamicMapLoaded) loadMap(gMapsOpts, restaurant).then();
+  }, { once: true });
 });
 
-window.loadMap = (success, fail) => {
-  const API_KEY = 'AIzaSyDX0ubSeymjp0TknoQccasOYsu7Aacu2f4';
-  const mapScript = `https://maps.googleapis.com/maps/api/js?key=${API_KEY}&libraries=places&callback=initMap`;
-  loadScripts([mapScript], success, fail);
+/**
+ * Initialize Google map
+ */
+const loadMap = (options = gMapsOpts, restaurant) => {
+  if (isDynamicMapLoaded) return Promise.resolve('Map already loaded');
+  if (!navigator.onLine) {
+    return Promise.reject('There is no connection');
+  }
+  return loadGoogleMapsApi(options).then(googleMaps => {
+    isDynamicMapLoaded = true;
+    map = new googleMaps.Map(document.getElementById('map'), {
+      zoom: 16,
+      center: restaurant.latlng,
+      scrollwheel: false
+    });
+    return Promise.resolve(map);
+  })
+    .catch(console.error);
 };
 
 /**
- * Initialize Google map, called from HTML.
+ * Initialize Google map with a static image
  */
-window.initMap = () => {
-  fetchRestaurantFromURL((error, restaurant) => {
-    if (error) { // Got an error!
-      console.error(error);
-    } else {
-      self.map = new google.maps.Map(document.getElementById('map'), {
-        zoom: 16,
-        center: restaurant.latlng,
-        scrollwheel: false
-      });
-      fillBreadcrumb();
-      DBHelper.mapMarkerForRestaurant(self.restaurant, self.map);
-    }
-  });
+const loadStaticMapImage = (restaurant) => {
+  const browserWidth = window.innerWidth ||
+    document.documentElement.clientWidth ||
+    document.body.clientWidth;
+  const center = {
+    lat: restaurant.latlng.lat,
+    lng: restaurant.latlng.lng
+  };
+  const mapHeight = '350'; // in px
+  const staticMapUrl =
+    `https://maps.googleapis.com/maps/api/staticmap?center=${center.lat},${center.lng}&` +
+    'zoom=16&' +
+    'scale=3&' +
+    `size=${browserWidth}x${mapHeight}&` +
+    'maptype=roadmap&format=png&' +
+    'visual_refresh=true&' +
+    `key=${gMapsOpts.key}`;
+
+  const mapsImage =
+    `<img width='${browserWidth}px' src=${encodeURI(staticMapUrl)} alt='Google Map image of Restaurants Area'>`;
+  document.getElementById('map').innerHTML = mapsImage;
 };
 
 /**
  * Get current restaurant from page URL.
  */
-var fetchRestaurantFromURL = (callback) => {
-  if (self.restaurant) { // restaurant already fetched!
-    callback(null, self.restaurant);
-    return;
-  }
-  const id = getParameterByName('id');
-  if (!id) { // no id found in URL
-    const error = 'No restaurant id in URL';
-    callback(error, null);
-  } else {
-    DBHelper.fetchRestaurantById(id, (error, restaurant) => {
-      self.restaurant = restaurant;
-      if (!restaurant) {
-        console.error(error);
-        return;
-      }
-      fillRestaurantHTML();
-      callback(null, restaurant);
+var fetchRestaurantFromURL = () => {
+  return new Promise((resolve, reject) => {
+    if (restaurant) { // restaurant already fetched!
+      return resolve(restaurant);
+    }
+    const id = getParameterByName('id');
+    if (!id) { // no id found in URL
+      return reject('No restaurant id in URL');
+    }
+    DBHelper.fetchRestaurantById(id, (error, rest) => {
+      restaurant = rest;
+      if (!rest)  return reject(error);
+      // fillRestaurantHTML();
+      return resolve(rest);
     });
-  }
+  });
 };
 
 /**
  * Create restaurant HTML and add it to the webpage
  */
-var fillRestaurantHTML = (restaurant = self.restaurant) => {
+var fillRestaurantHTML = (rest = restaurant) => {
   const name = document.getElementById('restaurant-name');
-  name.innerHTML = restaurant.name;
+  name.innerHTML = rest.name;
 
   const address = document.getElementById('restaurant-address');
-  address.innerHTML = restaurant.address;
+  address.innerHTML = rest.address;
 
   const picture = document.getElementById('restaurant-picture');
-  const imgSrc = DBHelper.imageUrlForRestaurant(restaurant);
+  const imgSrc = DBHelper.imageUrlForRestaurant(rest);
 
   const source = document.createElement('source');
   source.sizes = '(max-width: 680px) 100vw, 50vw';
@@ -101,15 +121,15 @@ var fillRestaurantHTML = (restaurant = self.restaurant) => {
   image.className = 'restaurant-img';
   image.srcset = `${imgSrc}-medium.webp 800w`;
   image.src = `${imgSrc}-medium.jpg`;
-  image.alt = `Cover photo for ${restaurant.name}`;
+  image.alt = `Cover photo for ${rest.name}`;
   
   picture.insertBefore(source, image);
   
   const cuisine = document.getElementById('restaurant-cuisine');
-  cuisine.innerHTML = restaurant.cuisine_type;
+  cuisine.innerHTML = rest.cuisine_type;
 
   // fill operating hours
-  if (restaurant.operating_hours) {
+  if (rest.operating_hours) {
     fillRestaurantHoursHTML();
   }
   // fill reviews
@@ -119,7 +139,7 @@ var fillRestaurantHTML = (restaurant = self.restaurant) => {
 /**
  * Create restaurant operating hours HTML table and add it to the webpage.
  */
-var fillRestaurantHoursHTML = (operatingHours = self.restaurant.operating_hours) => {
+var fillRestaurantHoursHTML = (operatingHours = restaurant.operating_hours) => {
   const hours = document.getElementById('restaurant-hours');
   for (let key in operatingHours) {
     const row = document.createElement('tr');
@@ -139,7 +159,7 @@ var fillRestaurantHoursHTML = (operatingHours = self.restaurant.operating_hours)
 /**
  * Create all reviews HTML and add them to the webpage.
  */
-var fillReviewsHTML = (reviews = self.restaurant.reviews) => {
+var fillReviewsHTML = (reviews = restaurant.reviews) => {
   const container = document.getElementById('reviews-container');
   const title = document.createElement('h2');
   title.innerHTML = 'Reviews';
@@ -185,11 +205,11 @@ var createReviewHTML = (review) => {
 /**
  * Add restaurant name to the breadcrumb navigation menu
  */
-var fillBreadcrumb = (restaurant=self.restaurant) => {
+var fillBreadcrumb = (rest = restaurant) => {
   const breadcrumb = document.getElementById('breadcrumb');
   if (breadcrumb.children.length > 1) return;
   const li = document.createElement('li');
-  li.innerHTML = restaurant.name;
+  li.innerHTML = rest.name;
   li.setAttribute('aria-current', 'page');
   breadcrumb.appendChild(li);
 };
