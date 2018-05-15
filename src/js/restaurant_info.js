@@ -62,7 +62,8 @@ const loadStaticMapImage = (restaurant) => {
   };
   const mapHeight = '350'; // in px
   const staticMapUrl =
-    `https://maps.googleapis.com/maps/api/staticmap?center=${center.lat},${center.lng}&` +
+    'https://maps.googleapis.com/maps/api/staticmap?' + 
+    `center=${center.lat},${center.lng}&` +
     'zoom=16&' +
     'scale=3&' +
     `size=${browserWidth}x${mapHeight}&` +
@@ -70,9 +71,9 @@ const loadStaticMapImage = (restaurant) => {
     'visual_refresh=true&' +
     `key=${gMapsOpts.key}`;
 
-  const mapsImage =
-    `<img width='${browserWidth}px' src=${encodeURI(staticMapUrl)} alt='Google Map image of Restaurants Area'>`;
-  document.getElementById('map').innerHTML = mapsImage;
+  const staticMapImage =
+    `<img width='${browserWidth}px' src=${encodeURI(staticMapUrl)} alt='Google Map image of ${restaurant.name}'>`;
+  document.getElementById('map').innerHTML = staticMapImage;
 };
 
 /**

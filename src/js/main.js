@@ -5,6 +5,10 @@ const gMapsOpts = {
   key: 'AIzaSyDX0ubSeymjp0TknoQccasOYsu7Aacu2f4',
   libraries: ['places']
 };
+const loc = {
+  lat: 40.722216,
+  lng: -73.987501
+};
 let isDynamicMapLoaded = false;
 
 require('./polyfills');
@@ -58,10 +62,6 @@ const loadDynamicMap = (options = gMapsOpts) => {
   }
   return loadGoogleMapsApi(options).then(googleMaps => {
     isDynamicMapLoaded = true;
-    const loc = {
-      lat: 40.722216,
-      lng: -73.987501
-    };
     map = new googleMaps.Map(document.getElementById('map'), {
       zoom: 12,
       center: loc,
@@ -82,7 +82,8 @@ const loadStaticMapImage = () => {
 
   const mapHeight = '400'; // in px
   const staticMapUrl =
-    'https://maps.googleapis.com/maps/api/staticmap?center=40.722216,+-73.987501&' +
+    'https://maps.googleapis.com/maps/api/staticmap?' +
+    `center=${loc.lat},${loc.lng}&` +
     'zoom=12&' +
     'scale=3&' +
     `size=${browserWidth}x${mapHeight}&` +
@@ -90,9 +91,9 @@ const loadStaticMapImage = () => {
     'visual_refresh=true&' +
     `key=${gMapsOpts.key}`;
 
-  const mapsImage =
+  const staticMapImage =
     `<img width='${browserWidth}px' src=${encodeURI(staticMapUrl)} alt='Google Map image of Restaurants Area'>`;
-  document.getElementById('map').innerHTML = mapsImage;
+  document.getElementById('map').innerHTML = staticMapImage;
 };
 
 /**
