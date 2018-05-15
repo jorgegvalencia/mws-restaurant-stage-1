@@ -24,23 +24,20 @@ document.addEventListener('DOMContentLoaded', () => {
       loadStaticMapImage();
       updateRestaurants();
     } else {
-      loadMap().then(updateRestaurants);
+      loadDynamicMap().then(updateRestaurants);
     }
     fetchNeighborhoods();
     fetchCuisines();
     document.getElementById('cuisines-select').addEventListener('change', onUserAction);
     document.getElementById('neighborhoods-select').addEventListener('change', onUserAction);
-    document.getElementById('map').addEventListener('mouseover', function() {
-      if (!isDynamicMapLoaded) loadMap().then(updateRestaurants);
-    }, { once: true });
-    window.addEventListener('resize', function() {
-      if (!isDynamicMapLoaded) loadMap().then(updateRestaurants);
-    }, { once: true });
+    document.getElementById('map').addEventListener('mouseover', onUserAction, { once: true });
+    window.addEventListener('resize', onUserAction, { once: true });
+    window.addEventListener('touchend', onUserAction, { once: true });
   });
 });
 
 const onUserAction = () => {
-  loadMap().finally(updateRestaurants);
+  loadDynamicMap().finally(updateRestaurants);
 };
 
 const initServiceWorker = () => {
@@ -54,7 +51,7 @@ const initServiceWorker = () => {
 /**
  * Initialize Google map
  */
-const loadMap = (options = gMapsOpts) => {
+const loadDynamicMap = (options = gMapsOpts) => {
   if (isDynamicMapLoaded) return Promise.resolve('Map already loaded');
   if (!navigator.onLine){
     return Promise.reject('There is no connection');

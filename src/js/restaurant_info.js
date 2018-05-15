@@ -14,27 +14,25 @@ document.addEventListener('DOMContentLoaded', () => {
     if (window.matchMedia('(max-width:580px)').matches) {
       loadStaticMapImage(restaurant);
     } else {
-      loadMap(gMapsOpts, restaurant).then(map => {
+      loadDynamicMap(gMapsOpts, restaurant).then(map => {
         DBHelper.mapMarkerForRestaurant(restaurant, map);
       });
     }
   })
     .catch(console.error);
-  document.getElementById('map').addEventListener('mouseover', function() {
-    if (!isDynamicMapLoaded) loadMap(gMapsOpts, restaurant).then();
-  }, { once: true });
-  window.addEventListener('resize', function() {
-    if (!isDynamicMapLoaded) loadMap(gMapsOpts, restaurant).then();
-  }, { once: true });
-  window.addEventListener('touchend', function() {
-    if (!isDynamicMapLoaded) loadMap(gMapsOpts, restaurant).then();
-  }, { once: true });
+  document.getElementById('map').addEventListener('mouseover', onUserAction, { once: true });
+  window.addEventListener('resize', onUserAction, { once: true });
+  window.addEventListener('touchend', onUserAction, { once: true });
 });
+
+const onUserAction = () => {
+  if (!isDynamicMapLoaded) loadDynamicMap(gMapsOpts, restaurant);
+};
 
 /**
  * Initialize Google map
  */
-const loadMap = (options = gMapsOpts, restaurant) => {
+const loadDynamicMap = (options = gMapsOpts, restaurant) => {
   if (isDynamicMapLoaded) return Promise.resolve('Map already loaded');
   if (!navigator.onLine) {
     return Promise.reject('There is no connection');
