@@ -4,7 +4,7 @@
 
 ### For running the app
 Requirements:
-* NodeJS Version >= 8.1.1
+* NodeJS Version >= 8.1.0
 * Gulp
 
 First install the dependencies running in a terminal
