@@ -105,6 +105,13 @@ nav h1 a {
 }
 
 #breadcrumb {
+  display: block;
+  width: 100%;
+  height: auto;
+  text-align: left;
+}
+
+#breadcrumb > ol {
   padding: 10px 40px 16px;
   list-style: none;
   background-color: #eee;
@@ -363,7 +370,7 @@ nav h1 a {
   padding: 30px 40px 80px;
 }
 
-#reviews-container h2 {
+#reviews-container h3 {
   color: #f58500;
   font-size: 24pt;
   font-weight: 300;
@@ -431,7 +438,9 @@ nav h1 a {
   .inside #maincontent {
     margin: 0 10%;
   }
-  #breadcrumb {
+  #breadcrumb > ol {
+    display: inline-block;
+    width: 100%;
     padding: 10px 15%;
   }
 }

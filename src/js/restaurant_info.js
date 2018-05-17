@@ -18,11 +18,11 @@ document.addEventListener('DOMContentLoaded', () => {
         DBHelper.mapMarkerForRestaurant(restaurant, map);
       });
     }
+    document.getElementById('map').addEventListener('mouseover', onUserAction, { once: true });
+    window.addEventListener('resize', onUserAction, { once: true });
+    window.addEventListener('touchend', onUserAction, { once: true });
   })
     .catch(console.error);
-  document.getElementById('map').addEventListener('mouseover', onUserAction, { once: true });
-  window.addEventListener('resize', onUserAction, { once: true });
-  window.addEventListener('touchend', onUserAction, { once: true });
 });
 
 const onUserAction = () => {
@@ -160,7 +160,7 @@ var fillRestaurantHoursHTML = (operatingHours = restaurant.operating_hours) => {
  */
 var fillReviewsHTML = (reviews = restaurant.reviews) => {
   const container = document.getElementById('reviews-container');
-  const title = document.createElement('h2');
+  const title = document.createElement('h3');
   title.innerHTML = 'Reviews';
   container.appendChild(title);
 
@@ -205,7 +205,7 @@ var createReviewHTML = (review) => {
  * Add restaurant name to the breadcrumb navigation menu
  */
 var fillBreadcrumb = (rest = restaurant) => {
-  const breadcrumb = document.getElementById('breadcrumb');
+  const breadcrumb = document.getElementById('breadcrumb-list');
   if (breadcrumb.children.length > 1) return;
   const li = document.createElement('li');
   li.innerHTML = rest.name;
