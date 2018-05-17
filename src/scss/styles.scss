@@ -147,6 +147,12 @@ nav h1 a {
   text-decoration: underline;
 }
 
+#breadcrumb li:last-child > a {
+  color: #222;
+  font-weight: bold;
+  text-decoration: none;
+}
+
 .skip-link {
   position: absolute;
   top: -9999px;

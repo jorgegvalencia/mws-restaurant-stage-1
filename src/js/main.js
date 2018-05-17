@@ -60,8 +60,8 @@ const loadDynamicMap = (options = gMapsOpts) => {
   if (!navigator.onLine){
     return Promise.reject('There is no connection');
   }
+  isDynamicMapLoaded = true;
   return loadGoogleMapsApi(options).then(googleMaps => {
-    isDynamicMapLoaded = true;
     map = new googleMaps.Map(document.getElementById('map'), {
       zoom: 12,
       center: loc,
@@ -69,7 +69,10 @@ const loadDynamicMap = (options = gMapsOpts) => {
     });
     return Promise.resolve(map);
   })
-    .catch(console.error);
+    .catch(function(err) {
+      console.error(err);
+      isDynamicMapLoaded = false;
+    });
 };
 
 /**

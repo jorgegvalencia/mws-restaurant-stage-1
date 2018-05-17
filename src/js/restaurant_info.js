@@ -37,8 +37,8 @@ const loadDynamicMap = (options = gMapsOpts, restaurant) => {
   if (!navigator.onLine) {
     return Promise.reject('There is no connection');
   }
+  isDynamicMapLoaded = true;
   return loadGoogleMapsApi(options).then(googleMaps => {
-    isDynamicMapLoaded = true;
     map = new googleMaps.Map(document.getElementById('map'), {
       zoom: 16,
       center: restaurant.latlng,
@@ -46,7 +46,10 @@ const loadDynamicMap = (options = gMapsOpts, restaurant) => {
     });
     return Promise.resolve(map);
   })
-    .catch(console.error);
+    .catch(function(err) {
+      console.error(err);
+      isDynamicMapLoaded = false;
+    });
 };
 
 /**
@@ -208,8 +211,11 @@ var fillBreadcrumb = (rest = restaurant) => {
   const breadcrumb = document.getElementById('breadcrumb-list');
   if (breadcrumb.children.length > 1) return;
   const li = document.createElement('li');
-  li.innerHTML = rest.name;
-  li.setAttribute('aria-current', 'page');
+  const anchor = document.createElement('a');
+  anchor.href = '#';
+  anchor.innerHTML = rest.name;
+  anchor.setAttribute('aria-current', 'page');
+  li.appendChild(anchor);
   breadcrumb.appendChild(li);
 };
 
