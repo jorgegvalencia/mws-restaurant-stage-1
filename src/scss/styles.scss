@@ -71,7 +71,7 @@ section {
 
 #footer {
   background-color: #444;
-  color: #aaa;
+  color: #eaeaea;
   font-size: 8pt;
   letter-spacing: 1px;
   padding: 25px;
@@ -194,6 +194,7 @@ nav h1 a {
   font-weight: bold;
   line-height: 1;
   margin: 0 20px;
+  text-shadow: 0 1px 1px #222222;
 }
 
 .filter-options select {
@@ -278,6 +279,7 @@ nav h1 a {
   padding: 8px 30px 10px;
   text-align: center;
   text-decoration: none;
+  text-shadow: 0 1px 1px #222222;
   text-transform: uppercase;
 }
 
