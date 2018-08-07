@@ -91,11 +91,13 @@ var fetchRestaurantFromURL = () => {
     if (!id) { // no id found in URL
       return reject('No restaurant id in URL');
     }
-    DBHelper.fetchRestaurantById(id, (error, rest) => {
+    DBHelper.fetchRestaurantById(id).then(rest => {
       restaurant = rest;
-      if (!rest)  return reject(error);
+      if (!rest) return reject('Empty restaurant data');
       // fillRestaurantHTML();
       return resolve(rest);
+    }).catch(err => {
+      reject(err);
     });
   });
 };
