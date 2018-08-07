@@ -13,11 +13,7 @@ let isDynamicMapLoaded = false;
 
 require('./polyfills');
 
-let map,
-  markers = [],
-  restaurantsList = [],
-  neighborhoodsList = [],
-  cuisinesList = [];
+let map, markers = [];
 
 /**
  * Fetch neighborhoods and cuisines as soon as the page is loaded.
@@ -30,13 +26,23 @@ document.addEventListener('DOMContentLoaded', () => {
     } else {
       loadDynamicMap().then(updateRestaurants);
     }
-    fetchNeighborhoods();
-    fetchCuisines();
+    fetchNeighborhoods().then(neighborhoods => {
+      fillNeighborhoodsHTML(neighborhoods);
+    });
+    fetchCuisines().then(cuisines => {
+      fillCuisinesHTML(cuisines);
+    });
     document.getElementById('cuisines-select').addEventListener('change', onUserAction);
     document.getElementById('neighborhoods-select').addEventListener('change', onUserAction);
-    document.getElementById('map').addEventListener('mouseover', onUserAction, { once: true });
-    window.addEventListener('resize', onUserAction, { once: true });
-    window.addEventListener('touchend', onUserAction, { once: true });
+    document.getElementById('map').addEventListener('mouseover', onUserAction, {
+      once: true
+    });
+    window.addEventListener('resize', onUserAction, {
+      once: true
+    });
+    window.addEventListener('touchend', onUserAction, {
+      once: true
+    });
   });
 });
 
@@ -54,10 +60,11 @@ const initServiceWorker = () => {
 
 /**
  * Initialize Google map
+ * Inmediately resolves if the map is already initialized
  */
 const loadDynamicMap = (options = gMapsOpts) => {
   if (isDynamicMapLoaded) return Promise.resolve('Map already loaded');
-  if (!navigator.onLine){
+  if (!navigator.onLine) {
     return Promise.reject('There is no connection');
   }
   isDynamicMapLoaded = true;
@@ -68,11 +75,10 @@ const loadDynamicMap = (options = gMapsOpts) => {
       scrollwheel: false
     });
     return Promise.resolve(map);
-  })
-    .catch(function(err) {
-      console.error(err);
-      isDynamicMapLoaded = false;
-    });
+  }).catch(function(err) {
+    console.error(err);
+    isDynamicMapLoaded = false;
+  });
 };
 
 /**
@@ -103,20 +109,13 @@ const loadStaticMapImage = () => {
  * Fetch all neighborhoods and set their HTML.
  */
 const fetchNeighborhoods = () => {
-  DBHelper.fetchNeighborhoods((error, neighborhoods) => {
-    if (error) { // Got an error
-      console.error(error);
-    } else {
-      neighborhoodsList = neighborhoods;
-      fillNeighborhoodsHTML();
-    }
-  });
+  return DBHelper.fetchNeighborhoods().catch(console.error);
 };
 
 /**
  * Set neighborhoods HTML.
  */
-const fillNeighborhoodsHTML = (neighborhoods = neighborhoodsList) => {
+const fillNeighborhoodsHTML = (neighborhoods) => {
   const select = document.getElementById('neighborhoods-select');
   neighborhoods.forEach(neighborhood => {
     const option = document.createElement('option');
@@ -130,20 +129,13 @@ const fillNeighborhoodsHTML = (neighborhoods = neighborhoodsList) => {
  * Fetch all cuisines and set their HTML.
  */
 const fetchCuisines = () => {
-  DBHelper.fetchCuisines((error, cuisines) => {
-    if (error) { // Got an error!
-      console.error(error);
-    } else {
-      cuisinesList = cuisines;
-      fillCuisinesHTML();
-    }
-  });
+  return DBHelper.fetchCuisines().catch(console.error);
 };
 
 /**
  * Set cuisines HTML.
  */
-const fillCuisinesHTML = (cuisines = cuisinesList) => {
+const fillCuisinesHTML = (cuisines) => {
   const select = document.getElementById('cuisines-select');
 
   cuisines.forEach(cuisine => {
@@ -157,31 +149,28 @@ const fillCuisinesHTML = (cuisines = cuisinesList) => {
 /**
  * Clear current restaurants, their HTML and remove their map markers.
  */
-const resetRestaurants = (restaurants) => {
-  // Remove all restaurants
-  restaurantsList = [];
+const resetRestaurants = () => {
   const ul = document.getElementById('restaurants-list');
   ul.innerHTML = '';
 
   // Remove all map markers
   markers.forEach(m => m.setMap(null));
   markers = [];
-  restaurantsList = restaurants;
 };
 
 /**
  * Create all restaurants HTML and add them to the webpage.
  */
-const fillRestaurantsHTML = (restaurants = restaurantsList) => {
+const fillRestaurantsHTML = (restaurants) => {
   const ul = document.getElementById('restaurants-list');
-  if (restaurants.length < 1){
+  if (restaurants.length < 1) {
     ul.innerHTML = '<p>No results found</p>';
     return;
   }
   restaurants.forEach(restaurant => {
     ul.append(createRestaurantHTML(restaurant));
   });
-  addMarkersToMap();
+  addMarkersToMap(restaurants);
 };
 
 /**
@@ -234,7 +223,7 @@ const createRestaurantHTML = (restaurant) => {
 /**
  * Add markers for current restaurants to the map.
  */
-const addMarkersToMap = (restaurants = restaurantsList) => {
+const addMarkersToMap = (restaurants) => {
   restaurants.forEach(restaurant => {
     // Add marker to the map
     if (isDynamicMapLoaded) {
@@ -260,12 +249,14 @@ const updateRestaurants = () => {
   const cuisine = cSelect[cIndex].value;
   const neighborhood = nSelect[nIndex].value;
 
-  DBHelper.fetchRestaurantByCuisineAndNeighborhood(cuisine, neighborhood, (error, restaurants) => {
-    if (error) { // Got an error!
+  DBHelper.fetchRestaurantByCuisineAndNeighborhood(cuisine, neighborhood)
+    .then(restaurants => {
+      resetRestaurants();
+      fillRestaurantsHTML(restaurants);
+    })
+    .catch(error => {
       console.error(error);
-    } else {
-      resetRestaurants(restaurants);
-      fillRestaurantsHTML();
-    }
-  });
+      const list = document.querySelector('#restaurants-list');
+      list.innerHTML = 'No results found';
+    });
 };
