@@ -19,6 +19,7 @@ const buffer = require('vinyl-buffer');
 const mergeStream = require('merge-stream');
 const compress = require('compression');
 
+const babelConfig = { presets: ['es2015'] };
 const argv = require('yargs').argv;
 const env = argv.env || 'dev';
 
@@ -190,7 +191,7 @@ gulp.task('build', function(done) {
 gulp.task('transpile', function() {
   return gulp.src(['src/js/**/*.js'])
     .pipe($.sourcemaps.init())
-    .pipe($.babel({ presets: ['es2015'] }))
+    .pipe($.babel(babelConfig))
     .on('error', log)
     .pipe($.sourcemaps.write('.'))
     .pipe(gulp.dest('dist'));
@@ -204,10 +205,6 @@ function createBundle (src) {
   var customOpts = {
     entries: src,
     debug: true
-  };
-
-  var babelConfig = {
-    presets: ['es2015']
   };
 
   var opts = Object.assign({}, watchify.args, customOpts);
