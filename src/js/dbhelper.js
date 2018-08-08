@@ -42,7 +42,7 @@ module.exports = class DBHelper {
         return Promise.resolve(restaurant);
       })
       .catch(() => {
-        return IDBHelper.getStoredRestaurant(id).then( restaurant => {
+        return IDBHelper.getStoredRestaurant(id).then(restaurant => {
           if (restaurant) return Promise.resolve(restaurant);
           return Promise.reject('Empty restaurant');
         });
@@ -119,6 +119,110 @@ module.exports = class DBHelper {
       return Promise.resolve(uniqueCuisines);
     });
   }
+
+  static fetchReviews() {
+    return fetch(DBHelper.API_ENDPOINT + '/reviews')
+      .then(response => response.json())
+      .then(reviews => {
+        // IDBHelper.storeReviews(reviews);
+        return Promise.resolve(reviews);
+      }).catch(() => {
+        // try to get the reviews data from the local db
+        // return IDBHelper.getStoredReviews().then(reviews => {
+        //   return Promise.resolve(reviews);
+        // });
+      }).catch(function(error) {
+        return error;
+      });
+  }
+
+  static fetchRestaurantReviews(restaurantId) {
+    return fetch(DBHelper.API_ENDPOINT + `/reviews/?restaurant_id=${restaurantId}`)
+      .then(response => response.json())
+      .then(reviews => {
+        // IDBHelper.storeReviews(reviews);
+        return Promise.resolve(reviews);
+      }).catch(() => {
+        // try to get the reviews data from the local db
+        // return IDBHelper.getStoredRestaurantReviews(restaurantId).then(reviews => {
+        //   return Promise.resolve(reviews);
+        // });
+      }).catch(function(error) {
+        return error;
+      });
+  }
+
+  static createRestaurantReview(restaurantId, review) {
+    const request = {
+      method: 'POST',
+      url: DBHelper.API_ENDPOINT + `/reviews/?restaurant_id=${restaurantId}`,
+      data: review
+    };
+    return fetch(request)
+      .then(response => response.json())
+      .then(review => {
+        // Response example
+        // {
+        //     "restaurant_id": "1",
+        //     "name": "Test",
+        //     "rating": "1",
+        //     "comments": "Test review",
+        //     "createdAt": "2018-08-08T18:34:06.466Z",
+        //     "updatedAt": "2018-08-08T18:34:06.466Z",
+        //     "id": 31
+        // }
+        // search if the review is pending
+        // if found, set as sent (set the server id)
+        // if not, store the new review (set the id as null)
+        // IDBHelper.storeReview(review);
+        return Promise.resolve(review);
+      })
+      .catch(() => {
+        // store the review as pending
+        // return IDBHelper.storePendingReview(restaurantId).then(review => {
+        //   return Promise.resolve(review);
+        // });
+      })
+      .catch(function(error) {
+        return error;
+      });
+  }
+
+  // static updateRestaurantReview(restaurantId, review) {
+  //   const request = {
+  //     method: 'PUT',
+  //     url: DBHelper.API_ENDPOINT + `/reviews/${review.id}`,
+  //     data: review
+  //   };
+  //   return fetch(request)
+  //     .then(response => response.json())
+  //     .then(review => {
+  //       // Response example
+  //       // {
+  //       //     "restaurant_id": "1",
+  //       //     "name": "Test",
+  //       //     "rating": "1",
+  //       //     "comments": "Test review",
+  //       //     "createdAt": "2018-08-08T18:34:06.466Z",
+  //       //     "updatedAt": "2018-08-08T18:34:06.466Z",
+  //       //     "id": 31
+  //       // }
+  //       // search if the review is pending
+  //       // if found, set as sent
+  //       // if not, store the new review
+  //       // IDBHelper.storeReview(reviews);
+  //       return Promise.resolve(review);
+  //     })
+  //     .catch(() => {
+  //       // store the review as pending
+  //       // return IDBHelper.storePendingReview(restaurantId).then(review => {
+  //       //   return Promise.resolve(review);
+  //       // });
+  //     })
+  //     .catch(function(error) {
+  //       return error;
+  //     });
+  // }
 
   /**
    * Restaurant page URL.

@@ -2,6 +2,9 @@ const DBHelper = require('./dbhelper');
 const loadGoogleMapsApi = require('load-google-maps-api');
 let isDynamicMapLoaded = false;
 let map, restaurant;
+let username = document.querySelector('#username');
+let rating = document.querySelector('#rating');
+let comment = document.querySelector('#comment');
 const gMapsOpts = {
   key: 'AIzaSyDX0ubSeymjp0TknoQccasOYsu7Aacu2f4',
   libraries: ['places']
@@ -9,8 +12,11 @@ const gMapsOpts = {
 
 document.addEventListener('DOMContentLoaded', () => {
   fetchRestaurantFromURL().then(restaurant => {
-    fillRestaurantHTML();
-    fillBreadcrumb();
+    DBHelper.fetchRestaurantReviews(restaurant.id).then(reviews => {
+      restaurant.reviews = reviews;
+      fillRestaurantHTML();
+      fillBreadcrumb();
+    });
     if (window.matchMedia('(max-width:580px)').matches) {
       loadStaticMapImage(restaurant);
     } else {
@@ -19,6 +25,8 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     }
     document.getElementById('map').addEventListener('mouseover', onUserAction, { once: true });
+    document.getElementById('new-review-form')
+      .addEventListener('submit', onReviewUpload);
     window.addEventListener('resize', onUserAction, { once: true });
     window.addEventListener('touchend', onUserAction, { once: true });
   })
@@ -27,6 +35,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
 const onUserAction = () => {
   if (!isDynamicMapLoaded) loadDynamicMap(gMapsOpts, restaurant);
+};
+
+const onReviewUpload = (e) => {
+  e.preventDefault();
+  const _username = username.value;
+  const _rating = rating.value;
+  const _comment = comment.value;
+  console.log(_username, _rating, _comment);
+  // DBHelper.fetchReviews();
 };
 
 /**
@@ -165,10 +182,6 @@ var fillRestaurantHoursHTML = (operatingHours = restaurant.operating_hours) => {
  */
 var fillReviewsHTML = (reviews = restaurant.reviews) => {
   const container = document.getElementById('reviews-container');
-  const title = document.createElement('h3');
-  title.innerHTML = 'Reviews';
-  container.appendChild(title);
-
   if (!reviews) {
     const noReviews = document.createElement('p');
     noReviews.innerHTML = 'No reviews yet!';
@@ -192,7 +205,7 @@ var createReviewHTML = (review) => {
   li.appendChild(name);
 
   const date = document.createElement('p');
-  date.innerHTML = review.date;
+  date.innerHTML = new Date(review.createdAt).toLocaleString();
   li.appendChild(date);
 
   const rating = document.createElement('p');
