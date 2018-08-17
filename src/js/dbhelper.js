@@ -20,11 +20,11 @@ module.exports = class DBHelper {
     return fetch(DBHelper.API_ENDPOINT + '/restaurants')
       .then(response => response.json())
       .then(restaurants => {
-        IDBHelper.storeRestaurants(restaurants);
+        IDBHelper.writeRestaurants(restaurants);
         return Promise.resolve(restaurants);
       }).catch(() => {
         // try to get the restaurant data from the local db
-        return IDBHelper.getStoredRestaurants().then(restaurants => {
+        return IDBHelper.readStoredRestaurants().then(restaurants => {
           return Promise.resolve(restaurants);
         });
       }).catch(function(error) {
@@ -42,7 +42,7 @@ module.exports = class DBHelper {
         return Promise.resolve(restaurant);
       })
       .catch(() => {
-        return IDBHelper.getStoredRestaurant(id).then(restaurant => {
+        return IDBHelper.readStoredRestaurant(id).then(restaurant => {
           if (restaurant) return Promise.resolve(restaurant);
           return Promise.reject('Empty restaurant');
         });
@@ -124,13 +124,14 @@ module.exports = class DBHelper {
     return fetch(DBHelper.API_ENDPOINT + '/reviews')
       .then(response => response.json())
       .then(reviews => {
-        // IDBHelper.storeReviews(reviews);
+        console.debug(reviews);
+        IDBHelper.writeReviews(reviews);
         return Promise.resolve(reviews);
       }).catch(() => {
         // try to get the reviews data from the local db
-        // return IDBHelper.getStoredReviews().then(reviews => {
-        //   return Promise.resolve(reviews);
-        // });
+        return IDBHelper.readStoredReviews().then(reviews => {
+          return Promise.resolve(reviews);
+        });
       }).catch(function(error) {
         return error;
       });
@@ -140,30 +141,35 @@ module.exports = class DBHelper {
     return fetch(DBHelper.API_ENDPOINT + `/reviews/?restaurant_id=${restaurantId}`)
       .then(response => response.json())
       .then(reviews => {
-        // IDBHelper.storeReviews(reviews);
+        console.debug(reviews);
+        IDBHelper.writeReviews(reviews);
         return Promise.resolve(reviews);
       }).catch(() => {
         // try to get the reviews data from the local db
-        // return IDBHelper.getStoredRestaurantReviews(restaurantId).then(reviews => {
-        //   return Promise.resolve(reviews);
-        // });
+        return IDBHelper.readStoredReviews(restaurantId).then(reviews => {
+          return Promise.resolve(reviews);
+        });
       }).catch(function(error) {
         return error;
       });
   }
 
   static createRestaurantReview(restaurantId, review) {
+    const url = DBHelper.API_ENDPOINT + `/reviews/?restaurant_id=${restaurantId}`;
+    let reviewModel = this.getReviewServerModel(review);
     const request = {
       method: 'POST',
-      url: DBHelper.API_ENDPOINT + `/reviews/?restaurant_id=${restaurantId}`,
-      data: review
+      body: JSON.stringify(reviewModel)
     };
-    return fetch(request)
+    return fetch(url, request)
       .then(response => response.json())
-      .then(review => {
+      .then(_serverReview => {
+        let whenFetchDone;
+        // cast restaurant id to number
+        review.restaurant_id = restaurantId && +restaurantId;
         // Response example
         // {
-        //     "restaurant_id": "1",
+        //     "restaurant_id": "1", !!!! STRING
         //     "name": "Test",
         //     "rating": "1",
         //     "comments": "Test review",
@@ -171,21 +177,68 @@ module.exports = class DBHelper {
         //     "updatedAt": "2018-08-08T18:34:06.466Z",
         //     "id": 31
         // }
-        // search if the review is pending
-        // if found, set as sent (set the server id)
-        // if not, store the new review (set the id as null)
-        // IDBHelper.storeReview(review);
-        return Promise.resolve(review);
+        // check if the review is pending
+        const isPendingReview = review._pendingUpdateId && review._pendingUpdateId !== _serverReview.id;
+        if (isPendingReview) {
+          console.debug('The review has been synced with the server');
+          console.debug('Updating local database');
+          whenFetchDone =IDBHelper.readStoredPendingReview(review._pendingUpdateId).then(pendingReview => {
+            if (!pendingReview) return Promise.resolve();
+            // if found, set as sent (set the server id)
+            pendingReview._pendingUpdateId = _serverReview.id;
+            pendingReview.id = _serverReview.id;
+            return IDBHelper.writeUpdatePendingReview(review._pendingUpdateId, pendingReview);
+          });
+        } else {
+          const _review = Object.assign(review, _serverReview);
+          _review._pendingUpdateId = _serverReview.id;
+          whenFetchDone = IDBHelper.writeReviews([review]);
+        }
+        whenFetchDone.then(function() {
+          return Promise.resolve(_serverReview);
+        });
       })
       .catch(() => {
         // store the review as pending
-        // return IDBHelper.storePendingReview(restaurantId).then(review => {
-        //   return Promise.resolve(review);
+        review._pendingUpdateId = new Date().getTime();
+        review.createdAt = new Date().toISOString();
+        review.restaurant_id = restaurantId && +restaurantId;
+        return IDBHelper.writeReviews([review]).then(review => {
+          return Promise.resolve(review);
+        });
+      })
+      .catch(function(error) {
+        return error;
+      });
+  }
+
+  static updateFavoriteRestaurant(restaurantId, isFavorite) {
+    const url = DBHelper.API_ENDPOINT + `/restaurants/${restaurantId}/?is_favorite=${isFavorite}`;
+    const request = {
+      method: 'PUT',
+    };
+    return fetch(url, request)
+      .then(response => response.json())
+      .then(() => {
+        return Promise.resolve();
+      })
+      .catch(() => {
+        // store the update in idb
+        // return IDBHelper.storePendingFavorite(restaurantId, isFavorite).then(()=> {
+        //   return Promise.resolve();
         // });
       })
       .catch(function(error) {
         return error;
       });
+  }
+
+  static readAllPendingReviews() {
+    return IDBHelper.readAllPendingReviews();
+  }
+
+  static readRestaurantPendingReviews(restaurantId) {
+    return IDBHelper.readRestaurantPendingReviews(restaurantId);
   }
 
   // static updateRestaurantReview(restaurantId, review) {
@@ -250,6 +303,14 @@ module.exports = class DBHelper {
       animation: google.maps.Animation.DROP
     });
     return marker;
+  }
+
+  static getReviewServerModel(review) {
+    return {
+      name: review.name,
+      rating: review.rating,
+      comments: review.comments
+    };
   }
 
 };

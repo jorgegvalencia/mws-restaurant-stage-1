@@ -2,9 +2,10 @@ const DBHelper = require('./dbhelper');
 const loadGoogleMapsApi = require('load-google-maps-api');
 let isDynamicMapLoaded = false;
 let map, restaurant;
-let username = document.querySelector('#username');
-let rating = document.querySelector('#rating');
-let comment = document.querySelector('#comment');
+let _username = document.querySelector('#username');
+let _rating = document.querySelector('#rating');
+let _comments = document.querySelector('#comment');
+
 const gMapsOpts = {
   key: 'AIzaSyDX0ubSeymjp0TknoQccasOYsu7Aacu2f4',
   libraries: ['places']
@@ -12,11 +13,12 @@ const gMapsOpts = {
 
 document.addEventListener('DOMContentLoaded', () => {
   fetchRestaurantFromURL().then(restaurant => {
-    DBHelper.fetchRestaurantReviews(restaurant.id).then(reviews => {
-      restaurant.reviews = reviews;
-      fillRestaurantHTML();
-      fillBreadcrumb();
-    });
+
+    const whenPendingReviewsRead = DBHelper.readRestaurantPendingReviews(restaurant.id);
+
+    fillBreadcrumb(restaurant);
+    fillRestaurantHTML(restaurant);
+
     if (window.matchMedia('(max-width:580px)').matches) {
       loadStaticMapImage(restaurant);
     } else {
@@ -24,11 +26,31 @@ document.addEventListener('DOMContentLoaded', () => {
         DBHelper.mapMarkerForRestaurant(restaurant, map);
       });
     }
+
     document.getElementById('map').addEventListener('mouseover', onUserAction, { once: true });
-    document.getElementById('new-review-form')
-      .addEventListener('submit', onReviewUpload);
+    document.getElementById('new-review-form').addEventListener('submit', onReviewUpload);
     window.addEventListener('resize', onUserAction, { once: true });
     window.addEventListener('touchend', onUserAction, { once: true });
+
+    // try to sync all the reviews
+    whenPendingReviewsRead.then(_pendingReviews => {
+      // try to send the updates
+      const whenPendingUpdates = _pendingReviews.map( _pendingReview => {
+        return DBHelper.createRestaurantReview(_pendingReview.restaurant_id, _pendingReview);
+      });
+      return Promise.all(whenPendingUpdates).catch(err => {
+        console.error(err);
+        return Promise.resolve(); // continue the initialization
+      });
+    }).then(() => {
+      DBHelper.fetchRestaurantReviews(restaurant.id).then(reviews => {
+        restaurant.reviews = reviews;
+        fillReviewsHTML(reviews);
+      }).catch(function(err) {
+        console.error(err);
+      });
+    });
+
   })
     .catch(console.error);
 });
@@ -39,11 +61,25 @@ const onUserAction = () => {
 
 const onReviewUpload = (e) => {
   e.preventDefault();
-  const _username = username.value;
-  const _rating = rating.value;
-  const _comment = comment.value;
-  console.log(_username, _rating, _comment);
-  // DBHelper.fetchReviews();
+  const name = _username.value;
+  const rating = _rating.value;
+  const comments = _comments.value;
+  const review = {
+    id: '',
+    name,
+    rating,
+    comments
+  };
+  console.debug(_username, _rating, comments);
+  DBHelper.createRestaurantReview(restaurant.id, review).then(_review => {
+    console.debug('Review created');
+    // TODO: clear form fields
+    let newReview = Object.assign(review, _review);
+    restaurant.reviews.push(newReview);
+    fillReviewsHTML(restaurant.reviews);
+  }).catch(err => {
+    console.error(err);
+  });
 };
 
 /**
@@ -108,11 +144,11 @@ var fetchRestaurantFromURL = () => {
     if (!id) { // no id found in URL
       return reject('No restaurant id in URL');
     }
-    DBHelper.fetchRestaurantById(id).then(rest => {
-      restaurant = rest;
-      if (!rest) return reject('Empty restaurant data');
+    DBHelper.fetchRestaurantById(id).then(_restaurant => {
+      restaurant = _restaurant;
+      if (!_restaurant) return reject('Empty restaurant data');
       // fillRestaurantHTML();
-      return resolve(rest);
+      return resolve(_restaurant);
     }).catch(err => {
       reject(err);
     });
@@ -122,15 +158,15 @@ var fetchRestaurantFromURL = () => {
 /**
  * Create restaurant HTML and add it to the webpage
  */
-var fillRestaurantHTML = (rest = restaurant) => {
+var fillRestaurantHTML = (_restaurant) => {
   const name = document.getElementById('restaurant-name');
-  name.innerHTML = rest.name;
+  name.innerHTML = _restaurant.name;
 
   const address = document.getElementById('restaurant-address');
-  address.innerHTML = rest.address;
+  address.innerHTML = _restaurant.address;
 
   const picture = document.getElementById('restaurant-picture');
-  const imgSrc = DBHelper.imageUrlForRestaurant(rest);
+  const imgSrc = DBHelper.imageUrlForRestaurant(_restaurant);
 
   const source = document.createElement('source');
   source.sizes = '(max-width: 680px) 100vw, 50vw';
@@ -142,19 +178,17 @@ var fillRestaurantHTML = (rest = restaurant) => {
   image.className = 'restaurant-img';
   image.srcset = `${imgSrc}-medium.webp 800w`;
   image.src = `${imgSrc}-medium.jpg`;
-  image.alt = `Cover photo for ${rest.name}`;
+  image.alt = `Cover photo for ${_restaurant.name}`;
   
   picture.insertBefore(source, image);
   
   const cuisine = document.getElementById('restaurant-cuisine');
-  cuisine.innerHTML = rest.cuisine_type;
+  cuisine.innerHTML = _restaurant.cuisine_type;
 
   // fill operating hours
-  if (rest.operating_hours) {
+  if (_restaurant.operating_hours) {
     fillRestaurantHoursHTML();
   }
-  // fill reviews
-  fillReviewsHTML();
 };
 
 /**
@@ -180,7 +214,7 @@ var fillRestaurantHoursHTML = (operatingHours = restaurant.operating_hours) => {
 /**
  * Create all reviews HTML and add them to the webpage.
  */
-var fillReviewsHTML = (reviews = restaurant.reviews) => {
+var fillReviewsHTML = (reviews) => {
   const container = document.getElementById('reviews-container');
   if (!reviews) {
     const noReviews = document.createElement('p');
@@ -189,6 +223,7 @@ var fillReviewsHTML = (reviews = restaurant.reviews) => {
     return;
   }
   const ul = document.getElementById('reviews-list');
+  ul.innerHTML = '';
   reviews.forEach(review => {
     ul.appendChild(createReviewHTML(review));
   });
