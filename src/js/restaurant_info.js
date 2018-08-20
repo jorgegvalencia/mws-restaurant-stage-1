@@ -72,6 +72,11 @@ const onReviewUpload = (e) => {
     rating,
     comments
   };
+  const isReviewValid = getIsReviewValid(review);
+  if (!isReviewValid) {
+    // TODO: set form as unvalid
+    return;
+  }
   console.debug(_username, _rating, comments);
   DBHelper.createRestaurantReview(restaurant.id, review).then(_review => {
     console.debug('Review created');
@@ -236,7 +241,9 @@ var fillReviewsHTML = (reviews) => {
   }
   const ul = document.getElementById('reviews-list');
   ul.innerHTML = '';
-  reviews.forEach(review => {
+  reviews.sort((rev1, rev2) => {
+    return rev1.createdAt - rev2.createdAt;
+  }).forEach(review => {
     ul.appendChild(createReviewHTML(review));
   });
   container.appendChild(ul);
@@ -248,6 +255,7 @@ var fillReviewsHTML = (reviews) => {
 var createReviewHTML = (review) => {
   const li = document.createElement('li');
   const name = document.createElement('p');
+  name.classList = 'username';
   name.innerHTML = review.name;
   li.appendChild(name);
 
@@ -256,10 +264,16 @@ var createReviewHTML = (review) => {
   li.appendChild(date);
 
   const rating = document.createElement('p');
-  rating.innerHTML = `Rating: ${review.rating}`;
+  rating.classList = 'rating';
+  let stars = '';
+  for (let i = 0; i < review.rating; i++) {
+    stars += '<span class="star">★</span>';
+  }
+  rating.innerHTML = `${stars}`;
   li.appendChild(rating);
 
   const comments = document.createElement('p');
+  comments.classList = 'comment';
   comments.innerHTML = review.comments;
   li.appendChild(comments);
 
@@ -294,4 +308,8 @@ var getParameterByName = (name, url) => {
   if (!results[2])
     return '';
   return decodeURIComponent(results[2].replace(/\+/g, ' '));
+};
+
+var getIsReviewValid = (review) => {
+  return review.name && review.comment && review.rating;
 };
