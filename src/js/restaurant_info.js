@@ -11,9 +11,39 @@ const gMapsOpts = {
   libraries: ['places']
 };
 
-document.addEventListener('DOMContentLoaded', () => {
-  fetchRestaurantFromURL().then(restaurant => {
+let firstFocusElement, dialog, dismissDialogLink, reviewForm;
 
+document.addEventListener('DOMContentLoaded', () => {
+
+  firstFocusElement = document.activeElement;
+  reviewForm = document.getElementById('new-review-form');
+  dialog = document.getElementById('network-off-dialog');
+  dismissDialogLink = document.getElementById('network-off-dialog-dismiss');
+  dismissDialogLink.tabIndex = -1;
+
+  window.addEventListener('resize', onUserAction, {
+    once: true
+  });
+  window.addEventListener('touchend', onUserAction, {
+    once: true
+  });
+  document.getElementById('map').addEventListener('mouseover', onUserAction, {
+    once: true
+  });
+  document.getElementById('new-review-form').addEventListener('submit', onReviewUpload);
+  dismissDialogLink.addEventListener('click', networkDialogDismiss);
+  dismissDialogLink.addEventListener('keypress', networkDialogDismiss);
+
+  const isConnectedToNetwork = navigator.onLine;
+  console.debug('Is connected to network =>', isConnectedToNetwork);
+  if (!isConnectedToNetwork) {
+    console.debug('Display alert for the user');
+    dialog.classList.add('active');
+    dismissDialogLink.focus(); // set the focus to the dismiss link
+    dismissDialogLink.tabIndex = 1;
+  }
+
+  fetchRestaurantFromURL().then(restaurant => {
     const whenPendingReviewsRead = DBHelper.readRestaurantPendingReviews(restaurant.id);
 
     fillBreadcrumb(restaurant);
@@ -27,34 +57,21 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     }
 
-    document.getElementById('map').addEventListener('mouseover', onUserAction, { once: true });
-    document.getElementById('new-review-form').addEventListener('submit', onReviewUpload);
-    window.addEventListener('resize', onUserAction, { once: true });
-    window.addEventListener('touchend', onUserAction, { once: true });
-
-    const isConnectedToNetwork = navigator.onLine;
-    console.debug('Connected to network:', isConnectedToNetwork);
-    if (!isConnectedToNetwork) {
-      // alert('You are not connected!');
-      // TODO: show a dialog
-    } else {
-      console.debug('User connected to the network. Trying to sync pending data...');
-      // try to sync all the reviews
-      whenPendingReviewsRead.then(_pendingReviews => {
-        // try to send the updates
-        return syncRestaurantData(_pendingReviews);
-      }).then(() => {
-        DBHelper.fetchRestaurantReviews(restaurant.id).then(reviews => {
-          restaurant.reviews = reviews;
-          fillReviewsHTML(reviews);
-        }).catch(function(err) {
-          console.error(err);
-        });
+    // try to sync all the reviews
+    console.debug('Trying to sync pending data...');
+    whenPendingReviewsRead.then(_pendingReviews => {
+      // try to send the updates
+      return syncRestaurantData(_pendingReviews);
+    }).then(() => {
+      DBHelper.fetchRestaurantReviews(restaurant.id).then(reviews => {
+        restaurant.reviews = reviews;
+        fillReviewsHTML(reviews);
+      }).catch(function(err) {
+        console.error(err);
       });
-    }
+    });
+  }).catch(console.error);
 
-  })
-    .catch(console.error);
 });
 
 const onUserAction = () => {
@@ -67,20 +84,22 @@ const onReviewUpload = (e) => {
   const rating = _rating.value;
   const comments = _comments.value;
   const review = {
-    id: '',
     name,
     rating,
     comments
   };
   const isReviewValid = getIsReviewValid(review);
   if (!isReviewValid) {
-    // TODO: set form as unvalid
     return;
   }
   console.debug(_username, _rating, comments);
   DBHelper.createRestaurantReview(restaurant.id, review).then(_review => {
     console.debug('Review created');
-    // TODO: clear form fields
+    document.getElementById('review-success-container').innerHTML = `
+      <p class="review-success-message">Review created successfully!</p>
+    `;
+    reviewForm.reset();
+    // Add the review to the list
     let newReview = Object.assign(review, _review);
     restaurant.reviews.push(newReview);
     fillReviewsHTML(restaurant.reviews);
@@ -90,13 +109,22 @@ const onReviewUpload = (e) => {
 };
 
 const syncRestaurantData = (_pendingReviews) => {
-  const whenPendingUpdates = _pendingReviews.map( _pendingReview => {
+  const whenPendingUpdates = _pendingReviews.map(_pendingReview => {
     return DBHelper.createRestaurantReview(_pendingReview.restaurant_id, _pendingReview);
   });
   return Promise.all(whenPendingUpdates).catch(err => {
     console.error(err);
     return Promise.resolve(); // continue the initialization
   });
+};
+
+const networkDialogDismiss = () => {
+  dialog.classList.remove('active');
+  dismissDialogLink.tabIndex = -1;
+  console.log(document.activeElement, firstFocusElement);
+  dismissDialogLink.blur();
+  // firstFocusElement.focus();
+  console.log(document.activeElement, firstFocusElement);
 };
 
 /**
@@ -115,11 +143,10 @@ const loadDynamicMap = (options = gMapsOpts, restaurant) => {
       scrollwheel: false
     });
     return Promise.resolve(map);
-  })
-    .catch(function(err) {
-      console.error(err);
-      isDynamicMapLoaded = false;
-    });
+  }).catch(function(err) {
+    console.error(err);
+    isDynamicMapLoaded = false;
+  });
 };
 
 /**
@@ -135,7 +162,7 @@ const loadStaticMapImage = (restaurant) => {
   };
   const mapHeight = '350'; // in px
   const staticMapUrl =
-    'https://maps.googleapis.com/maps/api/staticmap?' + 
+    'https://maps.googleapis.com/maps/api/staticmap?' +
     `center=${center.lat},${center.lng}&` +
     'zoom=16&' +
     'scale=3&' +
@@ -196,9 +223,9 @@ var fillRestaurantHTML = (_restaurant) => {
   image.srcset = `${imgSrc}-medium.webp 800w`;
   image.src = `${imgSrc}-medium.jpg`;
   image.alt = `Cover photo for ${_restaurant.name}`;
-  
+
   picture.insertBefore(source, image);
-  
+
   const cuisine = document.getElementById('restaurant-cuisine');
   cuisine.innerHTML = _restaurant.cuisine_type;
 
@@ -311,5 +338,5 @@ var getParameterByName = (name, url) => {
 };
 
 var getIsReviewValid = (review) => {
-  return review.name && review.comment && review.rating;
+  return review.name && review.comments && review.rating;
 };

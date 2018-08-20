@@ -154,62 +154,33 @@ module.exports = class DBHelper {
       });
   }
 
-  static createRestaurantReview(restaurantId, review) {
+  static createRestaurantReview(restaurantId, _localReview) {
     const url = DBHelper.API_ENDPOINT + `/reviews/?restaurant_id=${restaurantId}`;
-    let reviewModel = this.getReviewServerModel(review);
+    let reviewModel = this.getReviewServerModel(_localReview);
     const request = {
       method: 'POST',
       body: JSON.stringify(reviewModel)
     };
-    return fetch(url, request)
-      .then(response => response.json())
-      .then(_serverReview => {
-        let whenFetchDone;
-        // cast restaurant id to number
-        review.restaurant_id = restaurantId && +restaurantId;
-        // Response example
-        // {
-        //     "restaurant_id": "1", !!!! STRING
-        //     "name": "Test",
-        //     "rating": "1",
-        //     "comments": "Test review",
-        //     "createdAt": "2018-08-08T18:34:06.466Z",
-        //     "updatedAt": "2018-08-08T18:34:06.466Z",
-        //     "id": 31
-        // }
-        // check if the review is pending
-        const isPendingReview = review._pendingUpdateId && review._pendingUpdateId !== _serverReview.id;
-        if (isPendingReview) {
-          console.debug('The review has been synced with the server');
-          console.debug('Updating local database');
-          whenFetchDone =IDBHelper.readStoredPendingReview(review._pendingUpdateId).then(pendingReview => {
-            if (!pendingReview) return Promise.resolve();
-            // if found, set as sent (set the server id)
-            pendingReview._pendingUpdateId = _serverReview.id;
-            pendingReview.id = _serverReview.id;
-            return IDBHelper.writeUpdatePendingReview(review._pendingUpdateId, pendingReview);
+    // cast restaurant id to number
+    _localReview.restaurant_id = restaurantId && +restaurantId;
+    return new Promise((resolve, reject) => {
+      fetch(url, request).then(response => response.json())
+        .then(_serverReview => {
+          this.syncLocalDBReview(_localReview, _serverReview).then(() => {
+            resolve(_serverReview);
+          }).catch(err => { // the request was succesful but the local sync failed for some reason
+            reject(err);
           });
-        } else {
-          const _review = Object.assign(review, _serverReview);
-          _review._pendingUpdateId = _serverReview.id;
-          whenFetchDone = IDBHelper.writeReviews([review]);
-        }
-        whenFetchDone.then(function() {
-          return Promise.resolve(_serverReview);
+        })
+        .catch(() => { // network failed
+          // store the review as pending
+          this.createLocalDBPendingReview(_localReview).then(review => {
+            resolve(review);
+          }).catch(err => {
+            reject(err);
+          });
         });
-      })
-      .catch(() => {
-        // store the review as pending
-        review._pendingUpdateId = new Date().getTime();
-        review.createdAt = new Date().toISOString();
-        review.restaurant_id = restaurantId && +restaurantId;
-        return IDBHelper.writeReviews([review]).then(review => {
-          return Promise.resolve(review);
-        });
-      })
-      .catch(function(error) {
-        return error;
-      });
+    });
   }
 
   static updateFavoriteRestaurant(restaurantId, isFavorite) {
@@ -239,6 +210,36 @@ module.exports = class DBHelper {
 
   static readRestaurantPendingReviews(restaurantId) {
     return IDBHelper.readRestaurantPendingReviews(restaurantId);
+  }
+
+  static syncLocalDBReview(_localReview, _serverReview) {
+    let whenLocalDBSyncDone;
+    // check if the review is pending
+    const isPendingReview = _localReview._pendingUpdateId && _localReview._pendingUpdateId !== _serverReview.id;
+    if (isPendingReview) {
+      console.debug('The review has been synced with the server');
+      console.debug('Updating local database');
+      // search the pending review by the pending id (timestamp format)
+      whenLocalDBSyncDone = IDBHelper.readStoredPendingReview(_localReview._pendingUpdateId).then(localReview => {
+        if (!localReview) return Promise.resolve();
+        // if found, set as sent (set the server id)
+        localReview._pendingUpdateId = _serverReview.id;
+        localReview.id = _serverReview.id;
+        return IDBHelper.writeUpdatePendingReview(_localReview._pendingUpdateId, localReview);
+      });
+    } else {
+      const _review = Object.assign(_localReview, _serverReview);
+      _review._pendingUpdateId = _serverReview.id;
+      whenLocalDBSyncDone = IDBHelper.writeReviews([_localReview]);
+    }
+    return whenLocalDBSyncDone;
+  }
+
+  static createLocalDBPendingReview(_localReview) {
+    _localReview.id = '';
+    _localReview._pendingUpdateId = new Date().getTime();
+    _localReview.createdAt = new Date().toISOString();
+    return IDBHelper.writeReviews([_localReview]);
   }
 
   // static updateRestaurantReview(restaurantId, review) {
@@ -308,7 +309,7 @@ module.exports = class DBHelper {
   static getReviewServerModel(review) {
     return {
       name: review.name,
-      rating: review.rating,
+      rating: +review.rating,
       comments: review.comments
     };
   }

@@ -14,6 +14,13 @@
 </head>
 
 <body class="inside">
+
+  <!-- Offline network alert  -->
+  <div id="network-off-dialog" class="connection-warning-dialog" role="alert">
+    Network is unavailable. Your updates will be deferred until network connection is recovered.
+    <a id="network-off-dialog-dismiss" tabindex="-1" role="button">Cool</a>
+  </div>
+
   <!-- Beginning header -->
   <header>
     <!-- Beginning nav -->
@@ -56,18 +63,20 @@
 
         <div class="form-group">
           <label for="username">
-            Name
+            Name*
             <br>
             <input type="text"
               name="username"
               id="username"
-              maxlength="30">
+              maxlength="30"
+              required>
           </label>
           <label for="rating">
-          Rating
+          Rating*
             <br>
             <select name="rating" 
-              id="rating">
+              id="rating"
+              required>
               <option value="" selected disabled>-</option>
               <option value="5">5</option>
               <option value="4">4</option>
@@ -78,33 +87,29 @@
           </label>
         </div>
 
-        <!-- <div class="form-group">
-        </div> -->
-
         <div class="form-group">
           <label for="comment">
-            Review
+            Comment*
             <br>
             <textarea name="comment"
               class="reviews-comment"
               id="comment"
-              placeholder="Describe your experience here..."
+              placeholder="Describe your experience here"
+              required
               cols="100" rows="5"></textarea>
           </label>
         </div>
 
         <div class="form-group">
           <button type="submit" class="reviews-submit">Send review</button>
+          <div id="review-success-container"></div>
         </div>
 
       </form>
       <ul id="reviews-list"></ul>
     </section>
     <!-- End reviews -->
-    <div class="connection-warning-dialog">
-      Network is unavailable. Your updates will be deferred until network reconnection.
-      <a>Dismiss</a>
-    </div>
+
   </main>
   <!-- End main -->
 

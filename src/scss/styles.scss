@@ -1,13 +1,12 @@
 @charset "utf-8";
 /* CSS Document */
 
-$primary-color: #3290e9;
-$secondary-color: #0275d8;
+$primary-color: #0275d8;
 $accent-color: #f18200;
 $focus-color: #0E4F8B;
 $frames-color: #252831;
 $dialog-color: #222222;
-$star-color: #9B7503;
+$star-color: $primary-color;
 
 body,
 td,
@@ -90,7 +89,7 @@ section {
 /* ====================== Utils ====================== */
 .star {
   color: $star-color;
-  font-size: 1.25rem;
+  font-size: 1.5rem;
 }
 
 .tar {
@@ -98,6 +97,7 @@ section {
 }
 
 .connection-warning-dialog {
+  z-index: 10000;
   position: fixed;
   background: $dialog-color;
   color: white;
@@ -113,6 +113,11 @@ section {
   &.active {
     transform: none;
   }
+
+}
+
+#network-off-dialog-dismiss{
+  cursor: pointer;
 }
 
 /* ====================== Navigation ====================== */
@@ -174,7 +179,8 @@ nav h1 a {
 /* Add a color to all links inside the list */
 
 #breadcrumb li a {
-  color: #0275d8;
+  font-weight: 500;
+  color: $focus-color;
   text-decoration: none;
 }
 
@@ -291,7 +297,7 @@ nav h1 a {
 }
 
 #restaurants-list li h3 {
-  color: $secondary-color;
+  color: $primary-color;
   font-size: 1rem;
   font-weight: 600;
   letter-spacing: 0;
@@ -305,7 +311,7 @@ nav h1 a {
 }
 
 #restaurants-list li a {
-  background-color: $secondary-color;
+  background-color: $primary-color;
   border-bottom: 3px solid #eee;
   color: #fff;
   display: inline-block;
@@ -376,23 +382,26 @@ nav h1 a {
   margin: auto;
   display: flex;
   flex-direction: column;
-  padding: 20px 20px;
   label {
     margin: 5px;
     font-weight: bold;
   }
 }
 
+#review-success-container {
+  padding: 0 10px;
+}
+
 .reviews-comment {
   padding: 15px;
-  font-family: Arial, Helvetica, sans-serif;
-  width: 100% !important;
+  font-family: Helvetica, Arial, sans-serif;
+  width: 90% !important;
   min-height: 150px;
 }
 
 .reviews-submit {
   width: 100%;
-  background-color: $secondary-color;
+  background-color: $primary-color;
   border: none;
   color: #fff;
   display: inline-block;
@@ -410,10 +419,10 @@ nav h1 a {
 }
 
 #restaurant-name {
-  color: #f18200;
+  color: $primary-color;
   font-family: Arial, sans-serif;
   font-size: 1.5rem;
-  font-weight: 200;
+  font-weight: bold;
   letter-spacing: 0;
   margin: 15px 0 30px;
   text-transform: uppercase;
@@ -454,9 +463,9 @@ nav h1 a {
 }
 
 #reviews-container h3 {
-  color: #f58500;
+  color: $primary-color;
   font-size: 1.75rem;
-  font-weight: 300;
+  font-weight: bold;
   letter-spacing: -1px;
   padding-bottom: 1pt;
 }
@@ -508,6 +517,7 @@ nav h1 a {
   .reviews-submit {
     width: 33%;
     max-width: 250px;
+    height: 50px;
   }
   #restaurant-img {
     width: 100%;
