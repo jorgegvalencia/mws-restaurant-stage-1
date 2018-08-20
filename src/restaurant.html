@@ -57,6 +57,7 @@
         <div class="form-group">
           <label for="username">
             Username
+            <br>
             <input type="text"
               name="username"
               id="username">
@@ -66,13 +67,14 @@
         <div class="form-group">
           <label for="rating">
             Rating
+            <br>
             <select name="rating" 
               id="rating">
-              <option value="1">1</option>
-              <option value="2">2</option>
-              <option value="3">3</option>
-              <option value="4">4</option>
-              <option value="5">5</option>
+              <option value="5">5 Stars</option>
+              <option value="4">4 Stars</option>
+              <option value="3">3 Stars</option>
+              <option value="2">2 Stars</option>
+              <option value="1">1 Stars</option>
             </select>
           </label>
         </div>
@@ -80,17 +82,25 @@
         <div class="form-group">
           <label for="comment">
             Review
+            <br>
             <textarea name="comment"
-              id="comment">
-            </textarea>
+              class="reviews-comment"
+              id="comment"></textarea>
           </label>
         </div>
 
-        <button type="submit">Send</button>
+        <div class="form-group tar">
+          <button type="submit" class="reviews-submit">Send review</button>
+        </div>
+
       </form>
       <ul id="reviews-list"></ul>
     </section>
     <!-- End reviews -->
+    <div class="connection-warning-dialog active">
+      Network is unavailable. Your updates will be deferred until network reconnection.
+      <a>Dismiss</a>
+    </div>
   </main>
   <!-- End main -->
 

@@ -32,24 +32,26 @@ document.addEventListener('DOMContentLoaded', () => {
     window.addEventListener('resize', onUserAction, { once: true });
     window.addEventListener('touchend', onUserAction, { once: true });
 
-    // try to sync all the reviews
-    whenPendingReviewsRead.then(_pendingReviews => {
-      // try to send the updates
-      const whenPendingUpdates = _pendingReviews.map( _pendingReview => {
-        return DBHelper.createRestaurantReview(_pendingReview.restaurant_id, _pendingReview);
+    const isConnectedToNetwork = navigator.onLine;
+    console.debug('Connected to network:', isConnectedToNetwork);
+    if (!isConnectedToNetwork) {
+      // alert('You are not connected!');
+      // TODO: show a dialog
+    } else {
+      console.debug('User connected to the network. Trying to sync pending data...');
+      // try to sync all the reviews
+      whenPendingReviewsRead.then(_pendingReviews => {
+        // try to send the updates
+        return syncRestaurantData(_pendingReviews);
+      }).then(() => {
+        DBHelper.fetchRestaurantReviews(restaurant.id).then(reviews => {
+          restaurant.reviews = reviews;
+          fillReviewsHTML(reviews);
+        }).catch(function(err) {
+          console.error(err);
+        });
       });
-      return Promise.all(whenPendingUpdates).catch(err => {
-        console.error(err);
-        return Promise.resolve(); // continue the initialization
-      });
-    }).then(() => {
-      DBHelper.fetchRestaurantReviews(restaurant.id).then(reviews => {
-        restaurant.reviews = reviews;
-        fillReviewsHTML(reviews);
-      }).catch(function(err) {
-        console.error(err);
-      });
-    });
+    }
 
   })
     .catch(console.error);
@@ -79,6 +81,16 @@ const onReviewUpload = (e) => {
     fillReviewsHTML(restaurant.reviews);
   }).catch(err => {
     console.error(err);
+  });
+};
+
+const syncRestaurantData = (_pendingReviews) => {
+  const whenPendingUpdates = _pendingReviews.map( _pendingReview => {
+    return DBHelper.createRestaurantReview(_pendingReview.restaurant_id, _pendingReview);
+  });
+  return Promise.all(whenPendingUpdates).catch(err => {
+    console.error(err);
+    return Promise.resolve(); // continue the initialization
   });
 };
 
