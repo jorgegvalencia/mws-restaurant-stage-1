@@ -128,7 +128,6 @@ module.exports = class DBHelper {
     return fetch(DBHelper.API_ENDPOINT + '/reviews')
       .then(response => response.json())
       .then(reviews => {
-        console.debug(reviews);
         IDBHelper.writeReviews(reviews);
         return Promise.resolve(reviews);
       }).catch(() => {
@@ -145,7 +144,6 @@ module.exports = class DBHelper {
     return fetch(DBHelper.API_ENDPOINT + `/reviews/?restaurant_id=${restaurantId}`)
       .then(response => response.json())
       .then(reviews => {
-        console.debug(reviews);
         IDBHelper.writeReviews(reviews);
         return Promise.resolve(reviews);
       }).catch(() => {

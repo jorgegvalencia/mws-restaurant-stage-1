@@ -24,16 +24,22 @@ document.addEventListener('DOMContentLoaded', () => {
   dismissDialogLink = document.getElementById('network-off-dialog-dismiss');
   dismissDialogLink.tabIndex = -1;
 
-  window.addEventListener('resize', onUserAction, {
-    once: true
+  window.addEventListener('resize', onUserAction, { once: true });
+  window.addEventListener('touchend', onUserAction, { once: true });
+  document.getElementById('map').addEventListener('mouseover', onUserAction, { once: true });
+  window.addEventListener('online', function() {
+    console.log('Connected');
+    favoriteToggleButton.disabled = false;
+    dialog.classList.remove('active');
+    dismissDialogLink.blur();
   });
-  window.addEventListener('touchend', onUserAction, {
-    once: true
+  window.addEventListener('offline', function() {
+    console.log('Disconnected');
+    favoriteToggleButton.disabled = true;
+    dialog.classList.add('active');
+    dismissDialogLink.focus(); // set the focus to the dismiss link
+    dismissDialogLink.tabIndex = 1;
   });
-  document.getElementById('map').addEventListener('mouseover', onUserAction, {
-    once: true
-  });
-
   reviewForm.addEventListener('submit', onReviewUpload);
   favoriteToggleButton.addEventListener('click', onFavoriteToggle);
   favoriteToggleButton.addEventListener('keypress', onFavoriteToggle);
@@ -47,7 +53,6 @@ document.addEventListener('DOMContentLoaded', () => {
     dialog.classList.add('active');
     dismissDialogLink.focus(); // set the focus to the dismiss link
     dismissDialogLink.tabIndex = 1;
-
     favoriteToggleButton.disabled = true;
   }
 
