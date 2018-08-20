@@ -4,6 +4,7 @@
 $primary-color: #0275d8;
 $accent-color: #f18200;
 $focus-color: #0E4F8B;
+$success-color: #0ca584;
 $frames-color: #252831;
 $dialog-color: #222222;
 $star-color: $primary-color;
@@ -87,6 +88,33 @@ section {
 }
 
 /* ====================== Utils ====================== */
+#toggle-favorite-button {
+  padding: 10px;
+  border: none;
+  margin: 1rem;
+  cursor: pointer;
+  background-color: $primary-color;
+  color: white;
+  font-size: 0.875rem;
+  font-weight: bold;
+
+  
+  &:hover, &focus {
+    background-color: $focus-color;
+  }
+  &.active {
+    background-color: $success-color;
+    &:hover, &focus {
+      background-color: $focus-color;
+    }
+  }
+  &[disabled] {
+    background-color: $frames-color;
+    cursor: not-allowed;
+  }
+
+}
+
 .star {
   color: $star-color;
   font-size: 1.5rem;
@@ -455,6 +483,8 @@ nav h1 a {
   border-top: 1px solid #fff;
   padding: 30px 40px;
   text-align: center;
+  display: flex;
+  flex-direction: column;
 }
 
 #reviews-container {

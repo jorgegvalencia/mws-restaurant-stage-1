@@ -67,6 +67,16 @@ class IDBHelper {
     });
   }
 
+  updateRestaurant(restaurant) {
+    return this._dbPromise.then(function(db) {
+      if (!db) return;
+      var tx = db.transaction('restaurants', 'readwrite');
+      var restaurantsStore = tx.objectStore('restaurants');
+      restaurantsStore.put(restaurant);
+      return tx.complete;
+    });
+  }
+
   // store a list of reviews
   // a) id de review <- devuelto cuando se ha creado/actualizado la review
   // b) (con actualizaciones) utlizariamos un flag

@@ -19,7 +19,11 @@ module.exports = class DBHelper {
   static fetchRestaurants() {
     return fetch(DBHelper.API_ENDPOINT + '/restaurants')
       .then(response => response.json())
-      .then(restaurants => {
+      .then(_restaurants => {
+        const restaurants = _restaurants.map(_restaurant => {
+          _restaurant.is_favorite = _restaurant.is_favorite == 'true';
+          return _restaurant;
+        });
         IDBHelper.writeRestaurants(restaurants);
         return Promise.resolve(restaurants);
       }).catch(() => {
@@ -190,10 +194,15 @@ module.exports = class DBHelper {
     };
     return fetch(url, request)
       .then(response => response.json())
-      .then(() => {
-        return Promise.resolve();
+      .then(serverRestaurant => {
+        // update localdb
+        return IDBHelper.readStoredRestaurant(restaurantId).then(_restaurant => {
+          _restaurant.is_favorite = serverRestaurant.is_favorite == 'true';
+          return IDBHelper.updateRestaurant(_restaurant);
+        });
       })
       .catch(() => {
+        // if favorite toggle should work offline
         // store the update in idb
         // return IDBHelper.storePendingFavorite(restaurantId, isFavorite).then(()=> {
         //   return Promise.resolve();

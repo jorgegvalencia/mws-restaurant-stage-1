@@ -6,16 +6,19 @@ let _username = document.querySelector('#username');
 let _rating = document.querySelector('#rating');
 let _comments = document.querySelector('#comment');
 
+const isFavoriteText = 'This restaurant is your favorite 💕';
+const markAsFavoriteText = 'Mark this restaurant as your favorite 💕';
 const gMapsOpts = {
   key: 'AIzaSyDX0ubSeymjp0TknoQccasOYsu7Aacu2f4',
   libraries: ['places']
 };
 
-let firstFocusElement, dialog, dismissDialogLink, reviewForm;
+let favoriteToggleButton, firstFocusElement, dialog, dismissDialogLink, reviewForm;
 
 document.addEventListener('DOMContentLoaded', () => {
 
   firstFocusElement = document.activeElement;
+  favoriteToggleButton = document.getElementById('toggle-favorite-button');
   reviewForm = document.getElementById('new-review-form');
   dialog = document.getElementById('network-off-dialog');
   dismissDialogLink = document.getElementById('network-off-dialog-dismiss');
@@ -30,7 +33,10 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('map').addEventListener('mouseover', onUserAction, {
     once: true
   });
-  document.getElementById('new-review-form').addEventListener('submit', onReviewUpload);
+
+  reviewForm.addEventListener('submit', onReviewUpload);
+  favoriteToggleButton.addEventListener('click', onFavoriteToggle);
+  favoriteToggleButton.addEventListener('keypress', onFavoriteToggle);
   dismissDialogLink.addEventListener('click', networkDialogDismiss);
   dismissDialogLink.addEventListener('keypress', networkDialogDismiss);
 
@@ -41,19 +47,23 @@ document.addEventListener('DOMContentLoaded', () => {
     dialog.classList.add('active');
     dismissDialogLink.focus(); // set the focus to the dismiss link
     dismissDialogLink.tabIndex = 1;
+
+    favoriteToggleButton.disabled = true;
   }
 
-  fetchRestaurantFromURL().then(restaurant => {
-    const whenPendingReviewsRead = DBHelper.readRestaurantPendingReviews(restaurant.id);
+  fetchRestaurantFromURL().then(_restaurant => {
+    const whenPendingReviewsRead = DBHelper.readRestaurantPendingReviews(_restaurant.id);
 
-    fillBreadcrumb(restaurant);
-    fillRestaurantHTML(restaurant);
+    restaurant = _restaurant;
+
+    fillBreadcrumb(_restaurant);
+    fillRestaurantHTML(_restaurant);
 
     if (window.matchMedia('(max-width:580px)').matches) {
-      loadStaticMapImage(restaurant);
+      loadStaticMapImage(_restaurant);
     } else {
-      loadDynamicMap(gMapsOpts, restaurant).then(map => {
-        DBHelper.mapMarkerForRestaurant(restaurant, map);
+      loadDynamicMap(gMapsOpts, _restaurant).then(map => {
+        DBHelper.mapMarkerForRestaurant(_restaurant, map);
       });
     }
 
@@ -63,8 +73,8 @@ document.addEventListener('DOMContentLoaded', () => {
       // try to send the updates
       return syncRestaurantData(_pendingReviews);
     }).then(() => {
-      DBHelper.fetchRestaurantReviews(restaurant.id).then(reviews => {
-        restaurant.reviews = reviews;
+      DBHelper.fetchRestaurantReviews(_restaurant.id).then(reviews => {
+        _restaurant.reviews = reviews;
         fillReviewsHTML(reviews);
       }).catch(function(err) {
         console.error(err);
@@ -99,10 +109,35 @@ const onReviewUpload = (e) => {
       <p class="review-success-message">Review created successfully!</p>
     `;
     reviewForm.reset();
+    setTimeout(()=> {
+      document.getElementById('review-success-container').innerHTML = '';
+    }, 3000);
     // Add the review to the list
     let newReview = Object.assign(review, _review);
     restaurant.reviews.push(newReview);
     fillReviewsHTML(restaurant.reviews);
+    if (!navigator.onLine) {
+      dialog.classList.add('active');
+    }
+  }).catch(err => {
+    console.error(err);
+  });
+};
+
+const onFavoriteToggle = () => {
+  const isFavorite = String(restaurant.is_favorite) == 'true';
+  DBHelper.updateFavoriteRestaurant(restaurant.id, !isFavorite).then(() => {
+    if (isFavorite) {
+      // Unmark favorite
+      favoriteToggleButton.classList.remove('active');
+      favoriteToggleButton.innerText = markAsFavoriteText;
+    } else {
+      // mark favorite
+      favoriteToggleButton.classList.add('active');
+      favoriteToggleButton.innerText = isFavoriteText;
+    }
+    restaurant.is_favorite = !isFavorite;
+    favoriteToggleButton.blur();
   }).catch(err => {
     console.error(err);
   });
@@ -123,7 +158,6 @@ const networkDialogDismiss = () => {
   dismissDialogLink.tabIndex = -1;
   console.log(document.activeElement, firstFocusElement);
   dismissDialogLink.blur();
-  // firstFocusElement.focus();
   console.log(document.activeElement, firstFocusElement);
 };
 
@@ -232,6 +266,13 @@ var fillRestaurantHTML = (_restaurant) => {
   // fill operating hours
   if (_restaurant.operating_hours) {
     fillRestaurantHoursHTML();
+  }
+
+  if (String(_restaurant.is_favorite) == 'true'){
+    favoriteToggleButton.classList.add('active');
+    favoriteToggleButton.innerText = isFavoriteText;
+  } else {
+    favoriteToggleButton.innerText = markAsFavoriteText;
   }
 };
 

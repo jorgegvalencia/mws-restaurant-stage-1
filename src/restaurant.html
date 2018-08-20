@@ -17,8 +17,8 @@
 
   <!-- Offline network alert  -->
   <div id="network-off-dialog" class="connection-warning-dialog" role="alert">
-    Network is unavailable. Your updates will be deferred until network connection is recovered.
-    <a id="network-off-dialog-dismiss" tabindex="-1" role="button">Cool</a>
+    It seems the network is unavailable. New reviews won't be public until the network connection is recovered.
+    <a id="network-off-dialog-dismiss" tabindex="-1" role="button">Dismiss</a>
   </div>
 
   <!-- Beginning header -->
@@ -53,6 +53,8 @@
       </picture>
       <p id="restaurant-cuisine"></p>
       <p id="restaurant-address"></p>
+      <button id="toggle-favorite-button" type="button" title="Toggle favorite">
+      </button>
       <table id="restaurant-hours"></table>
     </section>
     <!-- end restaurant -->
