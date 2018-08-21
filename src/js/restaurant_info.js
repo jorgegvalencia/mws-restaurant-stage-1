@@ -113,7 +113,7 @@ const onReviewUpload = (e) => {
 const onFavoriteToggle = () => {
   const isFavorite = String(currentRestaurant.is_favorite) == 'true';
   DBHelper.updateFavoriteRestaurant(currentRestaurant.id, !isFavorite).then(() => {
-    toggleFavorite(isFavorite);
+    toggleFavorite(!isFavorite);
     currentRestaurant.is_favorite = !isFavorite;
     favoriteToggleButton.blur();
   }).catch(err => {
@@ -181,17 +181,17 @@ const closeOfflineNetworkDialog = () => {
 
 const toggleFavorite = (isFavorite) => {
   if (isFavorite) {
-    // Unmark favorite
-    favoriteToggleButton.classList.remove('active');
-    favoriteToggleButton.innerHTML = markAsFavoriteText;
-    favoriteToggleButton.setAttribute('aria-pressed', false);
-    favoriteToggleButton.setAttribute('aria-label', 'Mark this restaurant as your favorite');
-  } else {
-    // mark favorite
+    // Set as favorite
     favoriteToggleButton.classList.add('active');
     favoriteToggleButton.innerHTML = isFavoriteText;
     favoriteToggleButton.setAttribute('aria-pressed', true);
     favoriteToggleButton.setAttribute('aria-label', 'This restaurant is your favorite');
+  } else {
+    // Set as non favorite
+    favoriteToggleButton.classList.remove('active');
+    favoriteToggleButton.innerHTML = markAsFavoriteText;
+    favoriteToggleButton.setAttribute('aria-pressed', false);
+    favoriteToggleButton.setAttribute('aria-label', 'Mark this restaurant as your favorite');
   }
 };
 
