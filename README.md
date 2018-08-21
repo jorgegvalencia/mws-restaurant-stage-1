@@ -15,4 +15,6 @@ Then run gulp to run the server
 ```
 > gulp
 ```
-The server from the [second stage](https://github.com/udacity/mws-restaurant-stage-2) must be running in the __localhost:1337__ address to retrieve the restaurants data. (Follow the instructions for running the server).
+The server from the [second stage](https://github.com/udacity/mws-restaurant-stage-3) must be running in the __localhost:1337__ address to retrieve the restaurants data. (Follow the instructions for running the server).
+
+Also, attribute `"photograph": "10"` should be added to the database file for the restaurant with id 10.
