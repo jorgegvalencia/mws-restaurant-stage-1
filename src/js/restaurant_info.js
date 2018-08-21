@@ -1,7 +1,7 @@
 const DBHelper = require('./dbhelper');
 const loadGoogleMapsApi = require('load-google-maps-api');
 let isDynamicMapLoaded = false;
-let map, restaurant;
+let map, currentRestaurant;
 let _username = document.querySelector('#username');
 let _rating = document.querySelector('#rating');
 let _comments = document.querySelector('#comment');
@@ -13,84 +13,66 @@ const gMapsOpts = {
   libraries: ['places']
 };
 
-let favoriteToggleButton, firstFocusElement, dialog, dismissDialogLink, reviewForm;
+let favoriteToggleButton, previousFocusedElement, dialog,
+  dismissDialogLink, reviewForm, reviewSuccessMessageContainer;
 
-document.addEventListener('DOMContentLoaded', () => {
+// ===================================== Life cycle =====================================
+document.addEventListener('DOMContentLoaded', activate);
 
-  firstFocusElement = document.activeElement;
+function activate() {
+  // Initialize DOM element references
+  previousFocusedElement = document.activeElement;
   favoriteToggleButton = document.getElementById('toggle-favorite-button');
   reviewForm = document.getElementById('new-review-form');
   dialog = document.getElementById('network-off-dialog');
   dismissDialogLink = document.getElementById('network-off-dialog-dismiss');
-  dismissDialogLink.tabIndex = -1;
+  reviewSuccessMessageContainer = document.getElementById('review-success-container');
 
+  // Setup event listeners handlers
+  document.getElementById('map').addEventListener('mouseover', onUserAction, { once: true });
   window.addEventListener('resize', onUserAction, { once: true });
   window.addEventListener('touchend', onUserAction, { once: true });
-  document.getElementById('map').addEventListener('mouseover', onUserAction, { once: true });
-  window.addEventListener('online', function() {
-    console.log('Connected');
-    favoriteToggleButton.disabled = false;
-    dialog.classList.remove('active');
-    dismissDialogLink.blur();
-  });
-  window.addEventListener('offline', function() {
-    console.log('Disconnected');
-    favoriteToggleButton.disabled = true;
-    dialog.classList.add('active');
-    dismissDialogLink.focus(); // set the focus to the dismiss link
-    dismissDialogLink.tabIndex = 1;
-  });
+  window.addEventListener('online', onOnlineNetwork, { once: true });
+  window.addEventListener('offline', onOfflineNetwork);
+
   reviewForm.addEventListener('submit', onReviewUpload);
   favoriteToggleButton.addEventListener('click', onFavoriteToggle);
   favoriteToggleButton.addEventListener('keypress', onFavoriteToggle);
-  dismissDialogLink.addEventListener('click', networkDialogDismiss);
-  dismissDialogLink.addEventListener('keypress', networkDialogDismiss);
+  dismissDialogLink.addEventListener('click', onNetworkDialogDismiss);
+  dismissDialogLink.addEventListener('keypress', onNetworkDialogDismiss);
 
-  const isConnectedToNetwork = navigator.onLine;
-  console.debug('Is connected to network =>', isConnectedToNetwork);
-  if (!isConnectedToNetwork) {
-    console.debug('Display alert for the user');
-    dialog.classList.add('active');
-    dismissDialogLink.focus(); // set the focus to the dismiss link
-    dismissDialogLink.tabIndex = 1;
+  if (!navigator.onLine) {
+    console.debug('Not connected to the network');
+    console.debug('Display alert dialog for the user');
+    openOfflineNetworkDialog();
     favoriteToggleButton.disabled = true;
   }
 
   fetchRestaurantFromURL().then(_restaurant => {
     const whenPendingReviewsRead = DBHelper.readRestaurantPendingReviews(_restaurant.id);
+    currentRestaurant = _restaurant; // track the state of the current restaurant
 
-    restaurant = _restaurant;
+    // Render logic
+    fillBreadcrumb(currentRestaurant);
+    fillRestaurantHTML(currentRestaurant);
+    loadRestaurantLocationMap(currentRestaurant);
 
-    fillBreadcrumb(_restaurant);
-    fillRestaurantHTML(_restaurant);
-
-    if (window.matchMedia('(max-width:580px)').matches) {
-      loadStaticMapImage(_restaurant);
-    } else {
-      loadDynamicMap(gMapsOpts, _restaurant).then(map => {
-        DBHelper.mapMarkerForRestaurant(_restaurant, map);
-      });
-    }
-
-    // try to sync all the reviews
+    // Try to sync all the reviews
     console.debug('Trying to sync pending data...');
-    whenPendingReviewsRead.then(_pendingReviews => {
-      // try to send the updates
-      return syncRestaurantData(_pendingReviews);
-    }).then(() => {
-      DBHelper.fetchRestaurantReviews(_restaurant.id).then(reviews => {
-        _restaurant.reviews = reviews;
-        fillReviewsHTML(reviews);
-      }).catch(function(err) {
-        console.error(err);
-      });
+    return whenPendingReviewsRead.then(_pendingReviews => {
+      return syncRestaurantData(_pendingReviews); // Send new pending reviews
+    }).then(() => { // Fetch last reviews data from server
+      return DBHelper.fetchRestaurantReviews(currentRestaurant.id);
+    }).then(_reviews => {
+      currentRestaurant.reviews = _reviews;
+      fillReviewsHTML(_reviews);
     });
   }).catch(console.error);
+}
 
-});
-
+// ===================================== Event handlers =====================================
 const onUserAction = () => {
-  if (!isDynamicMapLoaded) loadDynamicMap(gMapsOpts, restaurant);
+  if (!isDynamicMapLoaded) loadDynamicMap(gMapsOpts, currentRestaurant);
 };
 
 const onReviewUpload = (e) => {
@@ -98,31 +80,28 @@ const onReviewUpload = (e) => {
   const name = _username.value;
   const rating = _rating.value;
   const comments = _comments.value;
-  const review = {
-    name,
-    rating,
-    comments
-  };
+  const review = { name, rating, comments };
   const isReviewValid = getIsReviewValid(review);
-  if (!isReviewValid) {
-    return;
-  }
+  if (!isReviewValid) return;
+
   console.debug(_username, _rating, comments);
-  DBHelper.createRestaurantReview(restaurant.id, review).then(_review => {
+  DBHelper.createRestaurantReview(currentRestaurant.id, review).then(_review => {
     console.debug('Review created');
-    document.getElementById('review-success-container').innerHTML = `
-      <p class="review-success-message">Review created successfully!</p>
-    `;
+    // Add the review to the list
+    const newReview = Object.assign(review, _review);
+    currentRestaurant.reviews.push(newReview);
+    fillReviewsHTML(currentRestaurant.reviews);
+
+    // Show a success message
+    reviewSuccessMessageContainer.innerHTML = `
+      <p class="review-success-message">Review created successfully!</p>`;
     reviewForm.reset();
     setTimeout(()=> {
-      document.getElementById('review-success-container').innerHTML = '';
+      reviewSuccessMessageContainer.innerHTML = '';
     }, 3000);
-    // Add the review to the list
-    let newReview = Object.assign(review, _review);
-    restaurant.reviews.push(newReview);
-    fillReviewsHTML(restaurant.reviews);
+
     if (!navigator.onLine) {
-      dialog.classList.add('active');
+      openOfflineNetworkDialog();
     }
   }).catch(err => {
     console.error(err);
@@ -130,24 +109,48 @@ const onReviewUpload = (e) => {
 };
 
 const onFavoriteToggle = () => {
-  const isFavorite = String(restaurant.is_favorite) == 'true';
-  DBHelper.updateFavoriteRestaurant(restaurant.id, !isFavorite).then(() => {
-    if (isFavorite) {
-      // Unmark favorite
-      favoriteToggleButton.classList.remove('active');
-      favoriteToggleButton.innerText = markAsFavoriteText;
-    } else {
-      // mark favorite
-      favoriteToggleButton.classList.add('active');
-      favoriteToggleButton.innerText = isFavoriteText;
-    }
-    restaurant.is_favorite = !isFavorite;
+  const isFavorite = String(currentRestaurant.is_favorite) == 'true';
+  DBHelper.updateFavoriteRestaurant(currentRestaurant.id, !isFavorite).then(() => {
+    toggleFavorite(isFavorite);
+    currentRestaurant.is_favorite = !isFavorite;
     favoriteToggleButton.blur();
   }).catch(err => {
     console.error(err);
   });
 };
 
+const onOnlineNetwork = () => {
+  console.log('Connected');
+  favoriteToggleButton.disabled = false;
+
+  dialog.classList.remove('active');
+  dismissDialogLink.blur();
+
+  // sync db
+  DBHelper.readRestaurantPendingReviews(currentRestaurant.id).then(_pendingReviews => {
+    return syncRestaurantData(_pendingReviews).then(() => {
+      DBHelper.fetchRestaurantReviews(currentRestaurant.id).then(reviews => {
+        currentRestaurant.reviews = reviews;
+        fillReviewsHTML(reviews);
+      });
+    });
+  }).catch(function(err) {
+    console.error(err);
+  });
+  loadRestaurantLocationMap(currentRestaurant);
+};
+
+const onOfflineNetwork = () => {
+  console.log('Disconnected');
+  favoriteToggleButton.disabled = true;
+  openOfflineNetworkDialog();
+};
+
+const onNetworkDialogDismiss = () => {
+  closeOfflineNetworkDialog();
+};
+
+// ===================================== Helper methods =====================================
 const syncRestaurantData = (_pendingReviews) => {
   const whenPendingUpdates = _pendingReviews.map(_pendingReview => {
     return DBHelper.createRestaurantReview(_pendingReview.restaurant_id, _pendingReview);
@@ -158,17 +161,46 @@ const syncRestaurantData = (_pendingReviews) => {
   });
 };
 
-const networkDialogDismiss = () => {
-  dialog.classList.remove('active');
-  dismissDialogLink.tabIndex = -1;
-  console.log(document.activeElement, firstFocusElement);
-  dismissDialogLink.blur();
-  console.log(document.activeElement, firstFocusElement);
+const openOfflineNetworkDialog = () => {
+  previousFocusedElement = document.activeElement;
+  dialog.classList.add('active');
+  dialog.setAttribute('aria-hidden', false);
+  dismissDialogLink.focus(); // set the focus to the dismiss link
+  dismissDialogLink.tabIndex = 1;
 };
 
-/**
- * Initialize Google map
- */
+const closeOfflineNetworkDialog = () => {
+  dialog.classList.remove('active');
+  dialog.setAttribute('aria-hidden', true);
+  dismissDialogLink.tabIndex = -1;
+  dismissDialogLink.blur();
+  previousFocusedElement.focus();
+};
+
+const toggleFavorite = (isFavorite) => {
+  if (isFavorite) {
+    // Unmark favorite
+    favoriteToggleButton.classList.remove('active');
+    favoriteToggleButton.setAttribute('aria-pressed', false);
+    favoriteToggleButton.innerText = markAsFavoriteText;
+  } else {
+    // mark favorite
+    favoriteToggleButton.classList.add('active');
+    favoriteToggleButton.setAttribute('aria-pressed', true);
+    favoriteToggleButton.innerText = isFavoriteText;
+  }
+};
+
+const loadRestaurantLocationMap = (_restaurant) => {
+  if (window.matchMedia('(max-width:580px)').matches) {
+    loadStaticMapImage(_restaurant);
+  } else {
+    loadDynamicMap(gMapsOpts, _restaurant).then(map => {
+      DBHelper.mapMarkerForRestaurant(_restaurant, map);
+    });
+  }
+};
+
 const loadDynamicMap = (options = gMapsOpts, restaurant) => {
   if (isDynamicMapLoaded) return Promise.resolve('Map already loaded');
   if (!navigator.onLine) {
@@ -188,9 +220,6 @@ const loadDynamicMap = (options = gMapsOpts, restaurant) => {
   });
 };
 
-/**
- * Initialize Google map with a static image
- */
 const loadStaticMapImage = (restaurant) => {
   const browserWidth = window.innerWidth ||
     document.documentElement.clientWidth ||
@@ -215,22 +244,14 @@ const loadStaticMapImage = (restaurant) => {
   document.getElementById('map').innerHTML = staticMapImage;
 };
 
-/**
- * Get current restaurant from page URL.
- */
-var fetchRestaurantFromURL = () => {
+const fetchRestaurantFromURL = () => {
   return new Promise((resolve, reject) => {
-    if (restaurant) { // restaurant already fetched!
-      return resolve(restaurant);
-    }
     const id = getParameterByName('id');
     if (!id) { // no id found in URL
       return reject('No restaurant id in URL');
     }
     DBHelper.fetchRestaurantById(id).then(_restaurant => {
-      restaurant = _restaurant;
       if (!_restaurant) return reject('Empty restaurant data');
-      // fillRestaurantHTML();
       return resolve(_restaurant);
     }).catch(err => {
       reject(err);
@@ -238,10 +259,7 @@ var fetchRestaurantFromURL = () => {
   });
 };
 
-/**
- * Create restaurant HTML and add it to the webpage
- */
-var fillRestaurantHTML = (_restaurant) => {
+const fillRestaurantHTML = (_restaurant) => {
   const name = document.getElementById('restaurant-name');
   name.innerHTML = _restaurant.name;
 
@@ -270,21 +288,14 @@ var fillRestaurantHTML = (_restaurant) => {
 
   // fill operating hours
   if (_restaurant.operating_hours) {
-    fillRestaurantHoursHTML();
+    fillRestaurantHoursHTML(_restaurant.operating_hours);
   }
 
-  if (String(_restaurant.is_favorite) == 'true'){
-    favoriteToggleButton.classList.add('active');
-    favoriteToggleButton.innerText = isFavoriteText;
-  } else {
-    favoriteToggleButton.innerText = markAsFavoriteText;
-  }
+  const isFavorite = String(_restaurant.is_favorite) == 'true';
+  toggleFavorite(isFavorite);
 };
 
-/**
- * Create restaurant operating hours HTML table and add it to the webpage.
- */
-var fillRestaurantHoursHTML = (operatingHours = restaurant.operating_hours) => {
+const fillRestaurantHoursHTML = (operatingHours) => {
   const hours = document.getElementById('restaurant-hours');
   for (let key in operatingHours) {
     const row = document.createElement('tr');
@@ -301,10 +312,7 @@ var fillRestaurantHoursHTML = (operatingHours = restaurant.operating_hours) => {
   }
 };
 
-/**
- * Create all reviews HTML and add them to the webpage.
- */
-var fillReviewsHTML = (reviews) => {
+const fillReviewsHTML = (reviews) => {
   const container = document.getElementById('reviews-container');
   if (!reviews) {
     const noReviews = document.createElement('p');
@@ -314,18 +322,13 @@ var fillReviewsHTML = (reviews) => {
   }
   const ul = document.getElementById('reviews-list');
   ul.innerHTML = '';
-  reviews.sort((rev1, rev2) => {
-    return rev1.createdAt - rev2.createdAt;
-  }).forEach(review => {
+  reviews.forEach(review => {
     ul.appendChild(createReviewHTML(review));
   });
   container.appendChild(ul);
 };
 
-/**
- * Create review HTML and add it to the webpage.
- */
-var createReviewHTML = (review) => {
+const createReviewHTML = (review) => {
   const li = document.createElement('li');
   const name = document.createElement('p');
   name.classList = 'username';
@@ -333,7 +336,16 @@ var createReviewHTML = (review) => {
   li.appendChild(name);
 
   const date = document.createElement('p');
-  date.innerHTML = new Date(review.createdAt).toLocaleString();
+  const dateOpts = {
+    hour12: false,
+    weekday: 'long',
+    year: 'numeric',
+    month: 'numeric',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: 'numeric'
+  };
+  date.innerHTML = `Posted on ${new Date(review.createdAt).toLocaleString('en-EN', dateOpts)}`;
   li.appendChild(date);
 
   const rating = document.createElement('p');
@@ -353,25 +365,19 @@ var createReviewHTML = (review) => {
   return li;
 };
 
-/**
- * Add restaurant name to the breadcrumb navigation menu
- */
-var fillBreadcrumb = (rest = restaurant) => {
+const fillBreadcrumb = (_restaurant) => {
   const breadcrumb = document.getElementById('breadcrumb-list');
   if (breadcrumb.children.length > 1) return;
   const li = document.createElement('li');
   const anchor = document.createElement('a');
   anchor.href = '#';
-  anchor.innerHTML = rest.name;
+  anchor.innerHTML = _restaurant.name;
   anchor.setAttribute('aria-current', 'page');
   li.appendChild(anchor);
   breadcrumb.appendChild(li);
 };
 
-/**
- * Get a parameter by name from page URL.
- */
-var getParameterByName = (name, url) => {
+const getParameterByName = (name, url) => {
   if (!url) url = window.location.href;
   name = name.replace(/[[\]]/g, '\\$&');
   const regex = new RegExp(`[?&]${name}(=([^&#]*)|&|#|$)`),
@@ -383,6 +389,7 @@ var getParameterByName = (name, url) => {
   return decodeURIComponent(results[2].replace(/\+/g, ' '));
 };
 
-var getIsReviewValid = (review) => {
+const getIsReviewValid = (review) => {
   return review.name && review.comments && review.rating;
 };
+

@@ -16,7 +16,7 @@
 <body class="inside">
 
   <!-- Offline network alert  -->
-  <div id="network-off-dialog" class="connection-warning-dialog" role="alert">
+  <div id="network-off-dialog" class="connection-warning-dialog" role="alert" aria-hidden="true">
     It seems the network is unavailable. New reviews won't be public until the network connection is recovered.
     <a id="network-off-dialog-dismiss" tabindex="-1" role="button">Dismiss</a>
   </div>
@@ -65,7 +65,7 @@
 
         <div class="form-group">
           <label for="username">
-            Name*
+            Name
             <br>
             <input type="text"
               name="username"
@@ -74,7 +74,7 @@
               required>
           </label>
           <label for="rating">
-          Rating*
+          Rating
             <br>
             <select name="rating" 
               id="rating"
@@ -91,7 +91,7 @@
 
         <div class="form-group">
           <label for="comment">
-            Comment*
+            Comment
             <br>
             <textarea name="comment"
               class="reviews-comment"
@@ -104,7 +104,7 @@
 
         <div class="form-group">
           <button type="submit" class="reviews-submit">Send review</button>
-          <div id="review-success-container"></div>
+          <div id="review-success-container" role="alert"></div>
         </div>
 
       </form>
