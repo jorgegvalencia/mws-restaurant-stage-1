@@ -20,12 +20,19 @@ let map, markers = [];
  */
 document.addEventListener('DOMContentLoaded', () => {
   initServiceWorker().then(function() {
+    let whenMapLoaded;
+    const isIObserverSupported = 'IntersectionObserver' in window;
     if (window.matchMedia('(max-width:580px)').matches) {
       loadStaticMapImage();
-      updateRestaurants();
+      whenMapLoaded = Promise.resolve();
     } else {
-      loadDynamicMap().then(updateRestaurants);
+      whenMapLoaded = loadDynamicMap();
     }
+    whenMapLoaded.then(() => {
+      return updateRestaurants(isIObserverSupported);
+    }).then(() => {
+      isIObserverSupported && setupLazyLoadImages();
+    });
     fetchNeighborhoods().then(neighborhoods => {
       fillNeighborhoodsHTML(neighborhoods);
     });
@@ -34,20 +41,17 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     document.getElementById('cuisines-select').addEventListener('change', onUserAction);
     document.getElementById('neighborhoods-select').addEventListener('change', onUserAction);
-    document.getElementById('map').addEventListener('mouseover', onUserAction, {
-      once: true
-    });
-    window.addEventListener('resize', onUserAction, {
-      once: true
-    });
-    window.addEventListener('touchend', onUserAction, {
-      once: true
-    });
+    document.getElementById('map').addEventListener('mouseover', onUserAction, { once: true });
+    window.addEventListener('resize', onUserAction, { once: true });
+    window.addEventListener('touchend', onUserAction, { once: true });
+
   });
 });
 
 const onUserAction = () => {
-  loadDynamicMap().finally(updateRestaurants);
+  loadDynamicMap().finally(() => {
+    updateRestaurants(false);
+  });
 };
 
 const initServiceWorker = () => {
@@ -103,6 +107,29 @@ const loadStaticMapImage = () => {
   const staticMapImage =
     `<img width='${browserWidth}px' src=${encodeURI(staticMapUrl)} alt='Google Map image of Restaurants Area'>`;
   document.getElementById('map').innerHTML = staticMapImage;
+};
+
+const setupLazyLoadImages = () => {
+  // Setup images lazy loading
+  let lazyImages = [].slice.call(document.querySelectorAll('img.lazy'));
+  let lazyImageObserver = new IntersectionObserver(_images => {
+    _images.forEach(_image => {
+      if (_image.isIntersecting) {
+        let lazyImage = _image.target;
+        lazyImage.src = lazyImage.dataset.src;
+        lazyImage.srcset = lazyImage.dataset.srcset;
+        lazyImage.classList.remove('lazy');
+        lazyImage.onload = function() {
+          // remove the data-src attribute to apply css styles
+          lazyImage.removeAttribute('data-src');
+        };
+        lazyImageObserver.unobserve(lazyImage);
+      }
+    });
+  });
+  lazyImages.forEach(lazyImage => {
+    lazyImageObserver.observe(lazyImage);
+  });
 };
 
 /**
@@ -161,14 +188,14 @@ const resetRestaurants = () => {
 /**
  * Create all restaurants HTML and add them to the webpage.
  */
-const fillRestaurantsHTML = (restaurants) => {
+const fillRestaurantsHTML = (restaurants, shouldLazyLoadImage) => {
   const ul = document.getElementById('restaurants-list');
   if (restaurants.length < 1) {
     ul.innerHTML = '<p>No results found</p>';
     return;
   }
   restaurants.forEach(restaurant => {
-    ul.append(createRestaurantHTML(restaurant));
+    ul.append(createRestaurantHTML(restaurant, shouldLazyLoadImage));
   });
   addMarkersToMap(restaurants);
 };
@@ -176,7 +203,7 @@ const fillRestaurantsHTML = (restaurants) => {
 /**
  * Create restaurant HTML.
  */
-const createRestaurantHTML = (restaurant) => {
+const createRestaurantHTML = (restaurant, shouldLazyLoadImage) => {
   const li = document.createElement('li');
 
   const picture = document.createElement('picture');
@@ -188,9 +215,15 @@ const createRestaurantHTML = (restaurant) => {
   source.type = 'image/webp';
 
   const image = document.createElement('img');
-  image.className = 'restaurant-img';
-  image.srcset = `${imgSrc}-small.jpg 500w, ${imgSrc}-medium.jpg 800w`;
-  image.src = `${imgSrc}-medium.jpg`;
+  image.classList.add('restaurant-img');
+  if (shouldLazyLoadImage) {
+    image.classList.add('lazy');
+    image.dataset.srcset = `${imgSrc}-small.jpg 500w, ${imgSrc}-medium.jpg 800w`;
+    image.dataset.src = `${imgSrc}-medium.jpg`;
+  } else {
+    image.srcset = `${imgSrc}-small.jpg 500w, ${imgSrc}-medium.jpg 800w`;
+    image.src = `${imgSrc}-medium.jpg`;
+  }
   image.alt = `Cover photo for ${restaurant.name}`;
 
   picture.append(source);
@@ -239,7 +272,7 @@ const addMarkersToMap = (restaurants) => {
 /**
  * Update page and map for current restaurants.
  */
-const updateRestaurants = () => {
+const updateRestaurants = (shouldLazyLoadImage) => {
   const cSelect = document.getElementById('cuisines-select');
   const nSelect = document.getElementById('neighborhoods-select');
 
@@ -249,14 +282,16 @@ const updateRestaurants = () => {
   const cuisine = cSelect[cIndex].value;
   const neighborhood = nSelect[nIndex].value;
 
-  DBHelper.fetchRestaurantByCuisineAndNeighborhood(cuisine, neighborhood)
+  return DBHelper.fetchRestaurantByCuisineAndNeighborhood(cuisine, neighborhood)
     .then(restaurants => {
       resetRestaurants();
-      fillRestaurantsHTML(restaurants);
+      fillRestaurantsHTML(restaurants, shouldLazyLoadImage);
+      return Promise.resolve();
     })
     .catch(error => {
       console.error(error);
       const list = document.querySelector('#restaurants-list');
       list.innerHTML = 'No results found';
+      return Promise.reject(error);
     });
 };

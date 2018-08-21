@@ -78,6 +78,14 @@ section {
   display: block;
 }
 
+img {
+  opacity: 1;
+  transition: opacity 0.3s;
+  &[data-src] {
+    opacity: 0;
+  }
+}
+
 #maincontent {
   background-color: #f3f3f3;
   min-height: 100%;

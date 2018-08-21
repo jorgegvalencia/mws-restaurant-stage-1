@@ -53,13 +53,14 @@ function activate() {
     currentRestaurant = _restaurant; // track the state of the current restaurant
 
     // Render logic
+    const isIObserverSupported = 'IntersectionObserver' in window;
+    fillRestaurantHTML(currentRestaurant, isIObserverSupported);
     fillBreadcrumb(currentRestaurant);
-    fillRestaurantHTML(currentRestaurant);
     loadRestaurantLocationMap(currentRestaurant);
 
     // Try to sync all the reviews
     console.debug('Trying to sync pending data...');
-    return whenPendingReviewsRead.then(_pendingReviews => {
+    whenPendingReviewsRead.then(_pendingReviews => {
       return syncRestaurantData(_pendingReviews); // Send new pending reviews
     }).then(() => { // Fetch last reviews data from server
       return DBHelper.fetchRestaurantReviews(currentRestaurant.id);
@@ -67,6 +68,29 @@ function activate() {
       currentRestaurant.reviews = _reviews;
       fillReviewsHTML(_reviews);
     });
+
+    // Setup images lazy loading
+    if (isIObserverSupported) {
+      let lazyImages = [].slice.call(document.querySelectorAll('img.lazy'));
+      let lazyImageObserver = new IntersectionObserver(images => {
+        images.forEach(_image => {
+          if (_image.isIntersecting) {
+            let lazyImage = _image.target;
+            lazyImage.src = lazyImage.dataset.src;
+            lazyImage.srcset = lazyImage.dataset.srcset;
+            lazyImage.classList.remove('lazy');
+            lazyImage.onload = function() {
+              // remove the data-src attribute to apply css styles
+              lazyImage.removeAttribute('data-src');
+            };
+            lazyImageObserver.unobserve(lazyImage);
+          }
+        });
+      });
+      lazyImages.forEach(lazyImage => {
+        lazyImageObserver.observe(lazyImage);
+      });
+    }
   }).catch(console.error);
 }
 
@@ -263,7 +287,7 @@ const fetchRestaurantFromURL = () => {
   });
 };
 
-const fillRestaurantHTML = (_restaurant) => {
+const fillRestaurantHTML = (_restaurant, shouldLazyLoadImage) => {
   const name = document.getElementById('restaurant-name');
   name.innerHTML = _restaurant.name;
 
@@ -275,14 +299,19 @@ const fillRestaurantHTML = (_restaurant) => {
 
   const source = document.createElement('source');
   source.sizes = '(max-width: 680px) 100vw, 50vw';
-  // source.srcset = `${imgSrc.replace('.jpg', '-small.jpg')} 500w, ${imgSrc.replace('.jpg', '-medium.jpg')} 800w`;
   source.srcset = `${imgSrc}-small.webp 500w, ${imgSrc}-medium.webp 800w`;
   source.type = 'image/webp';
 
   const image = document.getElementById('restaurant-img');
-  image.className = 'restaurant-img';
-  image.srcset = `${imgSrc}-medium.webp 800w`;
-  image.src = `${imgSrc}-medium.jpg`;
+  image.classList.add('restaurant-img');
+  if (shouldLazyLoadImage) {
+    image.classList.add('lazy');
+    image.dataset.srcset = `${imgSrc}-medium.webp 800w`;
+    image.dataset.src = `${imgSrc}-medium.jpg`;
+  } else {
+    image.srcset = `${imgSrc}-medium.webp 800w`;
+    image.src = `${imgSrc}-medium.jpg`;
+  }
   image.alt = `Cover photo for ${_restaurant.name}`;
 
   picture.insertBefore(source, image);
