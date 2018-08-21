@@ -42,8 +42,10 @@ module.exports = class DBHelper {
   static fetchRestaurantById(id) {
     return fetch(DBHelper.API_ENDPOINT + '/restaurants/' + id)
       .then(response => response.json())
-      .then(restaurant => {
-        return Promise.resolve(restaurant);
+      .then(_restaurant => {
+        _restaurant.is_favorite = _restaurant.is_favorite == 'true';
+        IDBHelper.writeRestaurants([_restaurant]);
+        return Promise.resolve(_restaurant);
       })
       .catch(() => {
         return IDBHelper.readStoredRestaurant(id).then(restaurant => {
