@@ -94,9 +94,11 @@ const onReviewUpload = (e) => {
 
     // Show a success message
     reviewSuccessMessageContainer.innerHTML = `
-      <p class="review-success-message">Review created successfully!</p>`;
+    <p class="review-success-message">Review created successfully!</p>`;
+    reviewSuccessMessageContainer.setAttribute('aria-hidden', false);
     reviewForm.reset();
     setTimeout(()=> {
+      reviewSuccessMessageContainer.setAttribute('aria-hidden', true);
       reviewSuccessMessageContainer.innerHTML = '';
     }, 3000);
 
