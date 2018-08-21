@@ -6,8 +6,8 @@ let _username = document.querySelector('#username');
 let _rating = document.querySelector('#rating');
 let _comments = document.querySelector('#comment');
 
-const isFavoriteText = 'This restaurant is your favorite 💕';
-const markAsFavoriteText = 'Mark this restaurant as your favorite 💕';
+const isFavoriteText = 'This restaurant is your favorite <span aria-hidden="true">💕</span>';
+const markAsFavoriteText = 'Mark this restaurant as your favorite <span aria-hidden="true">💕</span>';
 const gMapsOpts = {
   key: 'AIzaSyDX0ubSeymjp0TknoQccasOYsu7Aacu2f4',
   libraries: ['places']
@@ -183,13 +183,15 @@ const toggleFavorite = (isFavorite) => {
   if (isFavorite) {
     // Unmark favorite
     favoriteToggleButton.classList.remove('active');
+    favoriteToggleButton.innerHTML = markAsFavoriteText;
     favoriteToggleButton.setAttribute('aria-pressed', false);
-    favoriteToggleButton.innerText = markAsFavoriteText;
+    favoriteToggleButton.setAttribute('aria-label', 'Mark this restaurant as your favorite');
   } else {
     // mark favorite
     favoriteToggleButton.classList.add('active');
+    favoriteToggleButton.innerHTML = isFavoriteText;
     favoriteToggleButton.setAttribute('aria-pressed', true);
-    favoriteToggleButton.innerText = isFavoriteText;
+    favoriteToggleButton.setAttribute('aria-label', 'This restaurant is your favorite');
   }
 };
 
@@ -342,7 +344,7 @@ const createReviewHTML = (review) => {
     hour12: false,
     weekday: 'long',
     year: 'numeric',
-    month: 'numeric',
+    month: 'long',
     day: 'numeric',
     hour: 'numeric',
     minute: 'numeric'
@@ -350,13 +352,15 @@ const createReviewHTML = (review) => {
   date.innerHTML = `Posted on ${new Date(review.createdAt).toLocaleString('en-EN', dateOpts)}`;
   li.appendChild(date);
 
-  const rating = document.createElement('p');
-  rating.classList = 'rating';
+  const rating = document.createElement('div');
   let stars = '';
   for (let i = 0; i < review.rating; i++) {
     stars += '<span class="star">★</span>';
   }
+  rating.classList = 'rating';
   rating.innerHTML = `${stars}`;
+  rating.setAttribute('aria-label', `Review rated with ${review.rating} stars`);
+  rating.setAttribute('title', `Rating of ${review.rating} Stars`);
   li.appendChild(rating);
 
   const comments = document.createElement('p');
